@@ -62,7 +62,7 @@ def parse(mult_file):
 
             table_data.append([voice_index,text_location,text,cmd_location,cmd])
 
-        with open(os.path.join(path, "tsv", mult_file[:-4] + ".tsv"),"w", encoding="utf-8") as txt_output:
+        with open(os.path.join(path, "tsv", mult_file + ".tsv"),"w", encoding="utf-8") as txt_output:
             for i in table_data:
                 txt_output.write("\t".join([str(i[0]),hex(i[1]),i[2],hex(i[3]),i[4]]) + "\n")
 
