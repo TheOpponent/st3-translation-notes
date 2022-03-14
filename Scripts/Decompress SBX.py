@@ -13,47 +13,48 @@
 # puyotools/http://code.google.com/p/puyotools/
 # fuzziqer software prs/http://www.fuzziqersoftware.com/projects.php
 
+# This script reads compressed SBX files in the working directory and outputs uncompressed files in the 'source' subdirectory with extension .SBX.bin.
 
 import os, sys
 import struct
 from array import array
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
+source_path = os.path.join(path,"source")
 
 def main():
-    if not os.path.exists(path + "\\Unpack"):
-        os.makedirs(path + "\\Unpack")
+    if not os.path.exists(source_path):
+        os.makedirs(source_path)
 
     for mult_file in os.listdir(path):
         if mult_file.lower().endswith(('.sbx')):
-            Unpack(mult_file)
+            decompress_sbx(mult_file)
 
-def Unpack(mult_file):
+
+def decompress_sbx(mult_file):
     # Read files in working directory. If first 4 bytes does not contain signature 'ASCR', skip the file.
-    f = open(path + "\\" + mult_file,"rb")
-    if f.read(4) != b'ASCR':
-        print("Not SBX:",mult_file)
-        return
+    with open(os.path.join(path,mult_file),"rb") as f:
+        if f.read(4) != b'ASCR':
+            print("Not SBX:",mult_file)
+            return
 
-    # Read bytes as little-endian, unsigned integers.
-    size_2 = struct.unpack("<I",f.read(4))[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
-    size = struct.unpack("<I",f.read(4))[0] # Uncompressed data size.
-    size_comp = struct.unpack("<I",f.read(4))[0] # Compressed data size. This value contains only the actual data without the 'CPRS' signature.
-    fd = f.read(size_comp)
-    # Remaining bytes may contain padding bytes of 00.
-    f.read(16) # Footer: CPRS....EOFC....
-    print(f"{mult_file}: Unpacked size: {size}. Compressed size: {size_comp}. Compressed size with header: {size_2}.")
+        # Read bytes as little-endian, unsigned integers.
+        size_2 = struct.unpack("<I",f.read(4))[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
+        size = struct.unpack("<I",f.read(4))[0] # Uncompressed data size.
+        size_comp = struct.unpack("<I",f.read(4))[0] # Compressed data size. This value contains only the actual data without the 'CPRS' signature.
+        fd = f.read(size_comp)
+        # Remaining bytes may contain padding bytes of 00.
+        f.read(16) # Footer: CPRS....EOFC....
+        print(f"{mult_file}: Unpacked size: {size}. Compressed size: {size_comp}. Compressed size with header: {size_2}.")
 
-    bytes = bytearray(fd)
-    prs = DecompressPrs(bytes) 
-    data = prs.decompress()
+        bytes = bytearray(fd)
+        prs = DecompressPrs(bytes) 
+        data = prs.decompress()
 
-    # Output decompressed files in Unpack subdirectory.
-    f2 = open(path + "\\Unpack\\" + mult_file + ".bin","wb")
-    f2.write(data)
-    f2.close()
-    f.close()
-
+        # Output decompressed files in Unpack subdirectory.
+        with open(os.path.join(source_path,mult_file + ".bin"),"wb") as f2:
+            f2.write(data)
+        
 class DecompressPrs:
     def __init__(self, data):
         self.ibuf = array("B", data)
@@ -63,14 +64,14 @@ class DecompressPrs:
         self.bit = 0
         self.cmd = 0
    
-    def getByte(self):
+    def get_byte(self):
         val = self.ibuf[self.iofs]
         self.iofs += 1
         return val
    
-    def getBit(self):
+    def get_bit(self):
         if self.bit == 0:
-            self.cmd = self.getByte()
+            self.cmd = self.get_byte()
             self.bit = 8
         bit = self.cmd & 1
         self.cmd >>= 1
@@ -79,21 +80,21 @@ class DecompressPrs:
 
     def decompress(self):
         while self.iofs < len(self.ibuf):
-            cmd = self.getBit()
+            cmd = self.get_bit()
             if cmd:
                 self.obuf.append(self.ibuf[self.iofs])
                 self.iofs += 1
             else:
-                t = self.getBit()
+                t = self.get_bit()
                 if t:
-                    a = self.getByte()
-                    b = self.getByte()
+                    a = self.get_byte()
+                    b = self.get_byte()
 
                     offset = ((b << 8) | a) >> 3
                     amount = a & 7
                     if self.iofs < len(self.ibuf):
                         if amount == 0:
-                            amount = self.getByte() + 1
+                            amount = self.get_byte() + 1
                         else:
                             amount += 2
 
@@ -102,8 +103,8 @@ class DecompressPrs:
                     amount = 0
                     for j in range(2):
                         amount <<= 1
-                        amount |= self.getBit()
-                    offset = self.getByte()
+                        amount |= self.get_bit()
+                    offset = self.get_byte()
                     amount += 2
 
                     start = len(self.obuf) - 0x100 + offset
