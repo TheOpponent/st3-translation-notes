@@ -23,7 +23,7 @@ def main():
 
     output = b''.join([b'ASCR',struct.pack("<I",padded_size),struct.pack("<I",uncompressed_size),struct.pack("<I",raw_size),buffer])
 
-    with open(sys.argv[1] + ".final","wb") as file:
+    with open(sys.argv[1],"wb") as file:
         file.write(output)
 
 if __name__ == "__main__":
