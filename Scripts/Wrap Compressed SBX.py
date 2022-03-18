@@ -26,5 +26,6 @@ def main():
     with open(sys.argv[1],"wb") as file:
         file.write(output)
 
+
 if __name__ == "__main__":
     main()

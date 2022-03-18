@@ -28,33 +28,30 @@ def main():
 
     for mult_file in os.listdir(path):
         if mult_file.lower().endswith(('.sbx')):
-            decompress_sbx(mult_file)
+            # Read files in working directory. If first 4 bytes does not contain signature 'ASCR', skip the file.
+            with open(os.path.join(path,mult_file),"rb") as f:
+                if f.read(4) != b'ASCR':
+                    print("Not SBX:",mult_file)
+                    return
 
+                # Read bytes as little-endian, unsigned integers.
+                size_2 = struct.unpack("<I",f.read(4))[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
+                size = struct.unpack("<I",f.read(4))[0] # Uncompressed data size.
+                size_comp = struct.unpack("<I",f.read(4))[0] # Compressed data size. This value contains only the actual data without the 'CPRS' signature.
+                fd = f.read(size_comp)
+                # Remaining bytes may contain padding bytes of 00.
+                f.read(16) # Footer: CPRS....EOFC....
+                print(f"{mult_file}: Unpacked size: {size}. Compressed size: {size_comp}. Compressed size with header: {size_2}.")
 
-def decompress_sbx(mult_file):
-    # Read files in working directory. If first 4 bytes does not contain signature 'ASCR', skip the file.
-    with open(os.path.join(path,mult_file),"rb") as f:
-        if f.read(4) != b'ASCR':
-            print("Not SBX:",mult_file)
-            return
+                bytes = bytearray(fd)
+                prs = DecompressPrs(bytes) 
+                data = prs.decompress()
 
-        # Read bytes as little-endian, unsigned integers.
-        size_2 = struct.unpack("<I",f.read(4))[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
-        size = struct.unpack("<I",f.read(4))[0] # Uncompressed data size.
-        size_comp = struct.unpack("<I",f.read(4))[0] # Compressed data size. This value contains only the actual data without the 'CPRS' signature.
-        fd = f.read(size_comp)
-        # Remaining bytes may contain padding bytes of 00.
-        f.read(16) # Footer: CPRS....EOFC....
-        print(f"{mult_file}: Unpacked size: {size}. Compressed size: {size_comp}. Compressed size with header: {size_2}.")
-
-        bytes = bytearray(fd)
-        prs = DecompressPrs(bytes) 
-        data = prs.decompress()
-
-        # Output decompressed files in Unpack subdirectory.
-        with open(os.path.join(source_path,mult_file + ".bin"),"wb") as f2:
-            f2.write(data)
+                # Output decompressed files in 'source' subdirectory.
+                with open(os.path.join(source_path,mult_file + ".bin"),"wb") as f2:
+                    f2.write(data)
         
+
 class DecompressPrs:
     def __init__(self, data):
         self.ibuf = array("B", data)
@@ -118,6 +115,7 @@ class DecompressPrs:
                     start += 1
 
         return self.obuf.tobytes()
+
 
 if __name__ == "__main__":
     main()
