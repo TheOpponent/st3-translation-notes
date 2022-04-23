@@ -2,3 +2,4 @@
 output/
 source/
 translate/
+__pycache__/
