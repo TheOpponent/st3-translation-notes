@@ -53,7 +53,7 @@ def main():
                     while True:
                         bytes = f.read(1)
                         if bytes == b'\x00': 
-                            cmd = byte_string.hex(" ")
+                            cmd = byte_string.hex()
                             break
                         byte_string += bytes
 

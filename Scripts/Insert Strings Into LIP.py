@@ -33,17 +33,6 @@ def main():
                 lip_file.seek(file_size + 8)
                 padding = lip_file.read()
 
-                # Get offsets. Offsets are 8 bytes before actual data being pointed to.
-                # lip_file.seek(12)
-                # lip_properties = []
-                # for i in range(line_count):
-                #     lip_properties.append((struct.unpack("<I",lip_file.read(4))[0],struct.unpack("<I",lip_file.read(4))[0],struct.unpack("<I",lip_file.read(4))[0]))
-
-                # if len(lip_properties) == 0:
-                #     print(f"{lip_file}: No offsets found.")
-                #     continue
-                # current_offset = lip_properties[0][1]
-
                 # Set current_offset to first offset in list.
                 new_offsets = bytearray()
                 new_strings = bytearray()
@@ -53,30 +42,66 @@ def main():
                 current_offset = struct.unpack("<I",lip_file.read(4))[0]
 
                 # Read CSV file.
+                # Order is: Voice index, Text offset, Text, LIP commands offset, LIP commands
                 with open(os.path.join(translate_path,translate_file),encoding="utf-8") as file:
                     csv_file = csv.reader(file,delimiter="|")
 
                     for i in csv_file:
-                        # Encode current string from csv. Terminate strings with byte 00.
+                        # Encode current string from csv.
+                        # new_offsets will contain triplets of voice index, text offset, and LIP command offset.
                         voice_index = struct.pack("<I",int(i[0]))
                         new_offsets += voice_index
+                        cmd_sequence = ''
+                        new_cmd_sequence = ''
 
+                        # Check if entire line consists of ASCII characters and assume line was altered.
                         if i[2].isascii():
-                            # Check if entire line consists of ASCII characters.
+                            
                             line_encoded = ascii_to_sjis(i[2],line_id=i[1])
-                        else:
-                            # Otherwise, assume string is unchanged Japanese text and encode as-is.
-                            line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
-                        cmd_sequence = bytes.fromhex(i[4]) + b'\x00'
 
-                        new_strings += line_encoded + cmd_sequence
+                            # The lip movement commands are a sequence of numbers 1-7. Digit 7 writes
+                            # characters to screen after a digit 1-6.
+                            # Remove all 7s from the sequence and reinsert them later.
+                            new_cmd_sequence = i[4].replace('7','')
+                            last_char = i[4][-1]
+
+                            # Divide cmd_sequence into groups of 3 digits.
+                            new_cmd_sequence = [new_cmd_sequence[i:i+3] for i in range(0,len(new_cmd_sequence),3)]
+                            # If number of cmd_sequence groups is less than length of string, pad it with
+                            # the last character.
+                            if len(new_cmd_sequence) < len(i[2]):
+                                if len(new_cmd_sequence[-1]) < 3:
+                                    new_cmd_sequence[-1] += last_char * (3 - len(new_cmd_sequence[-1]))
+                                for i in range(len(i[2]) - len(new_cmd_sequence)):
+                                    new_cmd_sequence.append(last_char * 3)
+
+                            # Insert one 7 every three digits, to draw one text character every 3 frames.
+                            for i in range(len(new_cmd_sequence)):
+                                cmd_sequence += new_cmd_sequence[i] + '7'
+
+                            # Ensure last character is not a 7 and that length of new cmd_sequence is even.
+                            if cmd_sequence[-1] == '7':
+                                cmd_sequence += last_char
+
+                            if len(cmd_sequence) % 2 != 0:
+                                cmd_sequence += last_char
+
+                        # Otherwise, assume string is unchanged Japanese text and encode string and lip command sequence as-is.
+                        else:
+                            
+                            line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
+                            cmd_sequence = i[4]
+
+                        cmd_sequence_encoded = bytes.fromhex(cmd_sequence) + b'\x00'
+
+                        new_strings += line_encoded + cmd_sequence_encoded
 
                         # Increase next offset by the length of the string in bytes.
                         new_offsets += struct.pack("<I",current_offset)
                         current_offset += len(line_encoded)
 
                         new_offsets += struct.pack("<I",current_offset)
-                        current_offset += len(cmd_sequence)
+                        current_offset += len(cmd_sequence_encoded)
 
                 # Output new offset table and strings.
                 output_binary = bytearray()
@@ -87,6 +112,8 @@ def main():
                     if (len(new_offsets + new_strings) + 8) % 4 == 0:
                         new_length = struct.pack("<I",len(new_offsets + new_strings) + 4)
                         break
+
+                # TODO: Subtract from padding area to offset new data, or remove padding completely.
 
                 output_binary += b'ALPD' + new_length + struct.pack("<I",line_count) + new_offsets + new_strings + padding
 
