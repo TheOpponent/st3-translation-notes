@@ -5,6 +5,7 @@ import os
 import sys
 import csv
 import struct
+from utils import *
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path,"translate")
@@ -60,7 +61,12 @@ def main():
                         voice_index = struct.pack("<I",int(i[0]))
                         new_offsets += voice_index
 
-                        line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
+                        if i[2].isascii():
+                            # Check if entire line consists of ASCII characters.
+                            line_encoded = ascii_to_sjis(i[2],line_id=i[1])
+                        else:
+                            # Otherwise, assume string is unchanged Japanese text and encode as-is.
+                            line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
                         cmd_sequence = bytes.fromhex(i[4]) + b'\x00'
 
                         new_strings += line_encoded + cmd_sequence

@@ -8,7 +8,7 @@
 # В файле S1106.SBX строчка текста 81 40 90 EC FA B1 83 71 83 8D 83 86 83 4C не распаковывается кодировкой shift_jis остальные распаковываются
 # При использование кодировки shift_jis_2004 различия только в файлах S1003.SBX и S1106.SBX
 
-# This script reads uncompressed SBX files with extension .SBX.bin  such as those output by the Decompress SBX script, and SBN files in the 'source' subdirectory.
+# This script reads uncompressed SBX files with extension .SBX.bin, such as those output by the Decompress SBX script, and SBN files in the 'source' subdirectory.
 # It outputs CSV files in the 'translate' subdirectory, using pipe characters | as delimiters. These files contain the offset address in hex and text converted to UTF-8.
 
 import os
@@ -61,8 +61,13 @@ def main():
                     byte_string = bytearray()
                     while True:
                         bytes = f.read(1)
-                        if bytes == b'\x00': # Strings are terminated with single byte 00.
-                            txt_output.write(hex(i) + "|" + byte_string.decode("shift_jis_2004") + "\n")
+                        if bytes == b'\x00': # Strings are null-terminated.
+                            byte_string_decoded = byte_string.decode("shift_jis_2004")
+                            if byte_string_decoded.isascii():
+                                string_type = "code"
+                            else:
+                                string_type = "dialogue"
+                            txt_output.write(f"{hex(i)}|{string_type}|{byte_string_decoded}\n")
                             break
                         byte_string += bytes
 

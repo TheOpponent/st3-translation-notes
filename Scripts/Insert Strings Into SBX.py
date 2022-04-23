@@ -7,6 +7,7 @@ import os
 import sys
 import csv
 import struct
+from utils import *
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path,"translate")
@@ -58,8 +59,12 @@ def main():
                     csv_file = csv.reader(file,delimiter="|")
 
                     for i in csv_file:
-                        # Encode current string from csv. Terminate strings with byte 00.
-                        line_encoded = i[1].encode(encoding="shift_jis_2004") + b'\x00'
+                        if i[1] != "code" and i[2].isascii():
+                            # Only translate strings that are not type "code" and contain only ASCII characters.
+                            line_encoded = ascii_to_sjis(i[2],line_id=i[0])
+                        else:
+                            # Otherwise, assume string is unchanged Japanese text or a subroutine name and encode as-is.
+                            line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
 
                         new_strings += line_encoded
                         new_offsets += struct.pack("<I",current_offset)
@@ -86,14 +91,6 @@ def main():
         else:
             print(f"{translate_file}: No matching uncompressed SBX file found.")
             continue
-
-
-def swap_bytes(value):
-    """Convert hex string to little-endian bytes."""
-
-    str = hex(value)[2:].zfill(8)
-
-    return str[6:8] + str[4:6] + str[2:4] + str[0:2]
 
 
 if __name__ == "__main__":
