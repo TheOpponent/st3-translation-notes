@@ -138,15 +138,17 @@ def ascii_to_sjis(input_str,*args,**kwargs):
 
 
 def linebreak(input_str,line_id=None,length_limit=30,last_line_length_limit=28,line_limit=4):
-        """Break lines according to length. Default length is 30.
+        """Break lines according to length_limit. Default length is 30.
         A backslash character is inserted at line breaks, 
         which is translated in ascii_to_sjis to byte 2F2F.
         
         Control code sequences are not counted in word length,
         assuming they consist of {} containing only letters, numbers,
-        commas, and @.
+        commas, and @. Because of the need for non-printable control 
+        codes, the standard text wrapping functions cannot be used.
         
-        Returns a tuple containing the output string and the number of lines.
+        Returns a tuple containing the output string and the number of 
+        lines.
         """
         
         output = ""
@@ -160,7 +162,6 @@ def linebreak(input_str,line_id=None,length_limit=30,last_line_length_limit=28,l
             word_length = len(i[1]) - sum([len(p) for p in re.findall("{[a-zA-Z0-9,@]+}",i[1])]) # Do not count control code sequences in word length.
 
             # Insert word that is not a forced line break.
-
             if i[1] != "\\":
                 if current_length + word_length + 1 <= length_limit:
                     output += i[1]
