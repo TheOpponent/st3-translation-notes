@@ -128,7 +128,7 @@ def ascii_to_sjis(input_str,*args,**kwargs):
             # If { is encountered, parse as a control code and paste characters directly rather than translating them.
             while input_str[i+1] != "}": # Check next character and stop pasting when } is next.
                 i += 1
-                output += ord(input_str[i])
+                output += bytes(input_str[i],"shift_jis_2004")
             
         i += 1
 
@@ -205,4 +205,4 @@ def swap_bytes(value):
 
 if __name__ == "__main__":
     input_str = input("String: ")
-    print(ascii_to_sjis(input_str))
+    print(ascii_to_sjis(input_str).hex())
