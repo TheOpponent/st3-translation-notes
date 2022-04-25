@@ -12,6 +12,9 @@ translate_path = os.path.join(path,"translate")
 lip_path = os.path.join(path,"source")
 output_path = os.path.join(path,"output")
 
+# Adjust this value to the desired number of frames between text characters.
+DELAY = 3
+
 def main():
 
     # Only process CSV files for which a LIP file with the same base name exists.
@@ -65,17 +68,17 @@ def main():
                             new_cmd_sequence = i[4].replace('7','')
                             last_char = i[4][-1]
 
-                            # Divide cmd_sequence into groups of 3 digits.
-                            new_cmd_sequence = [new_cmd_sequence[i:i+3] for i in range(0,len(new_cmd_sequence),3)]
+                            # Divide cmd_sequence into groups of digits equal to DELAY.
+                            new_cmd_sequence = [new_cmd_sequence[i:i + DELAY] for i in range(0,len(new_cmd_sequence),DELAY)]
                             # If number of cmd_sequence groups is less than length of string, pad it with
                             # the last character.
                             if len(new_cmd_sequence) < len(i[2]):
-                                if len(new_cmd_sequence[-1]) < 3:
-                                    new_cmd_sequence[-1] += last_char * (3 - len(new_cmd_sequence[-1]))
+                                if len(new_cmd_sequence[-1]) < DELAY:
+                                    new_cmd_sequence[-1] += last_char * (DELAY - len(new_cmd_sequence[-1]))
                                 for i in range(len(i[2]) - len(new_cmd_sequence)):
-                                    new_cmd_sequence.append(last_char * 3)
+                                    new_cmd_sequence.append(last_char * DELAY)
 
-                            # Insert one 7 every three digits, to draw one text character every 3 frames.
+                            # Insert one 7 in each group of digits, to draw one text character.
                             for i in range(len(new_cmd_sequence)):
                                 cmd_sequence += new_cmd_sequence[i] + '7'
 
