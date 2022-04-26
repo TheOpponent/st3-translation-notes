@@ -2,7 +2,7 @@
 
 import re
 
-def ascii_to_sjis(input_str,*args,**kwargs):
+def ascii_to_sjis(input_str,break_lines=True,*args,**kwargs):
     """Converts a string of ASCII characters to 
     byte-swapped Shift-JIS and null-terminate it."""
 
@@ -116,7 +116,8 @@ def ascii_to_sjis(input_str,*args,**kwargs):
     '\\':b'\x2F\x2F'
     }
 
-    input_str = linebreak(input_str,line_id=kwargs.get("line_id",None))[0]
+    if break_lines:
+        input_str = linebreak(input_str,line_id=kwargs.get("line_id",None))[0]
 
     output = bytearray()
 
@@ -159,7 +160,7 @@ def linebreak(input_str,line_id=None,length_limit=30,last_line_length_limit=28,l
         input_str = list(enumerate(input_str.replace(r"\n"," \\ ").split(" "),1))
 
         for i in input_str:
-            word_length = len(i[1]) - sum([len(p) for p in re.findall("{[a-zA-Z0-9,@]+}",i[1])]) # Do not count control code sequences in word length.
+            word_length = len(i[1]) - sum([len(p) for p in re.findall("{[a-zA-Z0-9,@!=]+}",i[1])]) # Do not count control code sequences in word length.
 
             # Insert word that is not a forced line break.
             if i[1] != "\\":
