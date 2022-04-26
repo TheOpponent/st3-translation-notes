@@ -119,6 +119,8 @@ def ascii_to_sjis(input_str,break_lines=True,*args,**kwargs):
     if break_lines:
         input_str = linebreak(input_str,line_id=kwargs.get("line_id",None))[0]
 
+    input_str = input_str.strip()
+    
     output = bytearray()
 
     i = 0
