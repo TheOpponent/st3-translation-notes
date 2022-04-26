@@ -1,5 +1,5 @@
-# This script reads OpOption.bin.csv translate subdirectory and inserts the strings within into OpOption.bin the source subdirectory.
-# It assumes all strings are fullyASCII.
+# This script reads OpOption.bin.csv translate subdirectory and merges the new strings into OpOption.bin in the source directory.
+# It assumes all strings are fully ASCII.
 # Output is written into OpOption.bin in the output directory.
 
 import os
