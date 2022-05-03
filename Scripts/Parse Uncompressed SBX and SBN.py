@@ -1,19 +1,17 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# This script reads uncompressed SBX files with extension .SBX.bin, such as those output by the Decompress SBX script, and SBN files in the 'source' subdirectory.
+# It outputs CSV files in the 'translate' subdirectory, using pipe characters | as delimiters. These files contain the offset address in hex and text converted to UTF-8.
 
-### Edited/translated from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695
+### Based on the scripts from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695
 ### Original comments:
 # ZetpeR xax007@yandex.ru
 # Вынемание текста из распакованных скриптов .SBX.bin игры Sakura Taisen 3 PC
 # В файле S1106.SBX строчка текста 81 40 90 EC FA B1 83 71 83 8D 83 86 83 4C не распаковывается кодировкой shift_jis остальные распаковываются
 # При использование кодировки shift_jis_2004 различия только в файлах S1003.SBX и S1106.SBX
 
-# This script reads uncompressed SBX files with extension .SBX.bin, such as those output by the Decompress SBX script, and SBN files in the 'source' subdirectory.
-# It outputs CSV files in the 'translate' subdirectory, using pipe characters | as delimiters. These files contain the offset address in hex and text converted to UTF-8.
-
 import os
 import sys
 import struct
+from utils import swap_bytes
 
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
 source_path = os.path.join(path,"source")
@@ -41,10 +39,10 @@ def main():
                 print("Not decompressed SBX or SBN:",file)
                 continue
 
-            table_4_location = struct.unpack("<I",f.read(4))[0] + offset   # Location of table of offsets for text area at the end of the file. Each offset is a 4-byte address.
-            table_4_length = struct.unpack("<I",f.read(4))[0]              # Number of lines in the 4-byte offset table, a 4-byte value.
-            table_16_location = struct.unpack("<I",f.read(4))[0] + offset  # Location of table of offsets, purpose currently unknown. Each offset is a 16-byte value.
-            table_16_length = struct.unpack("<I",f.read(4))[0]             # Number of lines in the 16-byte offset table, a 4-byte value.
+            table_4_location = struct.unpack("<I",f.read(4))[0] + offset   # Location of table of offsets for text area at the end of the file.
+            table_4_length = struct.unpack("<I",f.read(4))[0]              # Number of lines in the 4-byte offset table.
+            table_16_location = struct.unpack("<I",f.read(4))[0] + offset  # Location of table of offsets for data associated with subroutines.
+            table_16_length = struct.unpack("<I",f.read(4))[0]             # Number of lines in the 16-byte offset table.
 
             # Read the 4-byte offset table and load the addresses into a list.
             table_4_data = []
@@ -55,7 +53,7 @@ def main():
 
             # Parse each string at the addresses in the 4-byte offset list. Script text is read as Shift_JIS-2004.
             # https://en.wikipedia.org/wiki/Shift_JIS#Shift_JISx0213_and_Shift_JIS-2004
-            with open(os.path.join(translate_path, file[:-4] + ".csv"),"w", encoding="utf-8") as txt_output:
+            with open(os.path.join(translate_path, file + ".csv"),"w", encoding="utf-8") as txt_output:
                 for i in table_4_data:
                     f.seek(i)
                     byte_string = bytearray()
@@ -73,11 +71,31 @@ def main():
 
             # Read the 16-byte table and output raw values in a separate CSV file.
             table_16_data = []
-            f.seek(table_16_location)
+            data_location = table_16_location + (table_16_length * 16)
             for i in range(table_16_length):
-                table_16_data.append([str(i) for i in [struct.unpack("<I",f.read(4))[0],struct.unpack("<I",f.read(4))[0],struct.unpack("<I",f.read(4))[0],struct.unpack("<I",f.read(4))[0]]])
+                f.seek(table_16_location + (i * 16))
+                data_index = struct.unpack("<I",f.read(4))[0] # Data index.
+                data2 = struct.unpack("<I",f.read(4))[0] # Data value 2, purpose currently unknown.
+                data3 = struct.unpack("<I",f.read(4))[0] # Data value 3, purpose currently unknown.
+                data4 = struct.unpack("<I",f.read(4))[0] # Data value 4, purpose currently unknown.
+                
+                # Retrieve data.
+                f.seek(data_location)
+                byte_string = bytearray()
+                while True:
+                    # Read 4 bytes at a time. If the last 2 bytes are 40 40, continue with the next data chunk.
+                    bytes = f.read(4)
+                    byte_string += bytes
+                    if bytes[2:] == b'\x40\x40':
+                        data_raw = byte_string.hex(" ")
+                        break
 
-            with open(os.path.join(translate_path, file[:-4] + "_16.csv"),"w", encoding="utf-8") as txt_output:
+                table_16_data.append([str(i) for i in [data_index,data2,data3,data4,hex(data_location),data_raw]])
+
+                # Reset data_location for next chunk.
+                data_location = f.tell()
+
+            with open(os.path.join(translate_path, file + "_16.csv"),"w", encoding="utf-8") as txt_output:
                 for i in table_16_data:
                     output = "|".join(i)
                     txt_output.write(output + "\n")

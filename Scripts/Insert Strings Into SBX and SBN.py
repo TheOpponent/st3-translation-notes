@@ -1,5 +1,5 @@
-# This script reads a CSV file in the translate subdirectory and inserts the strings within into an uncompressed SBX script with a corresponding filename with extension .SBX.bin in the source subdirectory.
-# It outputs files in the 'output' subdirectory with extension .SBX. Pass these output files to a PRS compressor.
+# This script reads a CSV file in the translate subdirectory and inserts the strings within into an uncompressed SBX or SBN script with a corresponding filename with extension .SBX.bin or .SBN in the source subdirectory.
+# It outputs files in the 'output' subdirectory with the corresponding extension. Pass SBX output files to a PRS compressor.
 # This assumes all string offsets are contiguous.
 # The first line in a script extraction contains a blank string. The offset of this line is used as the starting point.
 
@@ -22,29 +22,25 @@ def main():
     # Only process CSV files for which a SBX with the same base name exists.
     for translate_file in os.listdir(translate_path):
         translate_base_name = os.path.splitext(translate_file)[0]
-        if os.path.splitext(translate_file)[1] == ".csv" and os.path.isfile(sbx_source := os.path.join(sbx_path,translate_base_name + ".bin")):
+        if os.path.splitext(translate_file)[1] == ".csv" and os.path.isfile(sbx_source := os.path.join(sbx_path,translate_base_name)):
             with open(sbx_source,"rb") as sbx_file:
 
-                # Check signature.
-                if sbx_file.read(4) != b'\xBA\xAF\x55\xCC':
-                    print(f"{sbx_file}: Not uncompressed SBX file.")
+                # Check signature. If the first 4 bytes or first 4 bytes after an 8-byte header contain a valid BA AF 55 CC signature, set the offset accordingly.
+                header = sbx_file.read(12)
+                if header[0:4] == b'\xBA\xAF\x55\xCC':
+                    offset = 0
+                    file_type = "sbx"
+                elif header[0:4] == b'ASCR' and header[8:12] == b'\xBA\xAF\x55\xCC':
+                    offset = 8
+                    file_type = "sbn"
+                else:
+                    print(f"{repr(sbx_file)}: Not uncompressed SBX or SBN file.")
                     continue
 
                 # Set address and limits.
-                offset_table_address = struct.unpack("<I",sbx_file.read(4))[0]
+                sbx_file.seek(offset + 4)
+                offset_table_address = struct.unpack("<I",sbx_file.read(4))[0] + offset
                 line_count = struct.unpack("<I",sbx_file.read(4))[0]
-
-                # Get offsets.
-                # offsets = []
-                # sbx_file.seek(offset_table_address)
-                # for i in range(line_count):
-                #     offsets.append(struct.unpack("<I",sbx_file.read(4))[0])
-
-                # if len(offsets) == 0:
-                #     print(f"{sbx_file}: No offsets found.")
-                #     continue
-
-                # current_offset = offsets[0]
 
                 # The first string is empty, which will cause the second offset to be 1 greater than the first.
                 new_offsets = bytearray()
@@ -76,20 +72,29 @@ def main():
                 output_binary = bytearray()
 
                 # Copy data preceding offset table location.
-                sbx_file.seek(0)
-                output_binary = sbx_file.read(offset_table_address) + new_offsets + new_strings
+                sbx_file.seek(offset)
+                output_binary = sbx_file.read(offset_table_address - offset) + new_offsets + new_strings
 
                 while True:
                     output_binary += b'\x40'
                     if len(output_binary) % 4 == 0:
                         break
+
+                if file_type == "sbn":
+                    # SBN files require a header containing the data area size and the EOFC footer.
+                    output_header = b'ASCR' + struct.pack("<I", len(output_binary))
+                    output_footer = b'EOFC\x00\x00\x00\x00'
+                else:
+                    # SBX files will be compressed later and have that information added after PRS compression.
+                    output_header = b''
+                    output_footer = b''
             
                 with open(os.path.join(output_path,translate_base_name + ".out"),"wb") as file:
-                    file.write(output_binary)
+                    file.write(output_header + output_binary + output_footer)
                     print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written. PRS data: {swap_bytes(len(output_binary))}")
 
         else:
-            print(f"{translate_file}: No matching uncompressed SBX file found.")
+            print(f"{translate_file}: No matching uncompressed SBX or SBN file found.")
             continue
 
 
