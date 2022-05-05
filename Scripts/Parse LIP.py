@@ -16,7 +16,7 @@ def main():
 
     for file in os.listdir(source_path):
         if file.lower().endswith(('.lip')):
-            # Read files in working directory. If first 4 bytes does not contain signature BA AF 55 CC, skip the file.
+            # Read files in working directory. If first 4 bytes does not contain signature ALPD, skip the file.
             with open(os.path.join(source_path,file),"rb") as f:
                 if f.read(4) != b'ALPD':
                     print("Not LIP file:",file)
@@ -59,9 +59,9 @@ def main():
 
                     table_data.append([voice_index,text_location,text,cmd_location,cmd])
 
-                with open(os.path.join(translate_path, file + ".csv"),"w", encoding="utf-8") as txt_output:
+                with open(os.path.join(translate_path, file + ".csv"),"w", encoding="utf-8") as output_file:
                     for i in table_data:
-                        txt_output.write("|".join([str(i[0]),hex(i[1]),i[2],hex(i[3]),i[4]]) + "\n")
+                        output_file.write("|".join([str(i[0]),hex(i[1]),i[2],hex(i[3]),i[4]]) + "\n")
 
             print(f"{file}: Data area length: {file_size}. Entries: {table_length}.")
 
