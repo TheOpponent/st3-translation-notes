@@ -5,7 +5,19 @@ import re
 
 def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     """Converts a string of ASCII characters to 
-    byte-swapped Shift-JIS and null-terminate it."""
+    byte-swapped Shift-JIS and null-terminate it.
+    
+    Set break_lines to false to bypass the linebreak function.
+    Use this for non-dialogue text, such as menus.
+
+    Set the offset argument to the number of tiles to skip
+    from the below table. This can be used to redefine
+    otherwise unused tiles for custom glyphs, such as an 
+    alternate font for areas outside of the dialogue box
+    with a different font size.
+    
+    The keyword arguments length_limit, last_line_length_limit, and 
+    line_limit can be passed to linebreak function."""
 
     table = {'A': 33376,
     'B': 33377,
@@ -111,7 +123,10 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     '}': None}
 
     if break_lines:
-        input_str = linebreak(input_str,line_id=kwargs.get("line_id",None))[0]
+        input_str = linebreak(input_str,line_id=kwargs.get("line_id",None),
+                              length_limit=kwargs.get("length_limit",31),
+                              last_line_length_limit=kwargs.get("last_line_length_limit",31),
+                              line_limit=kwargs.get("line_limit",4))[0]
 
     input_str = input_str.strip()
     
@@ -134,7 +149,7 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     return output
 
 
-def linebreak(input_str,line_id=None,length_limit=30,last_line_length_limit=28,line_limit=4):
+def linebreak(input_str,line_id=None,length_limit=31,last_line_length_limit=31,line_limit=4):
         """Break lines according to length_limit. Default length is 30.
         A backslash character is inserted at line breaks, 
         which is translated in ascii_to_sjis to byte 2F2F.
