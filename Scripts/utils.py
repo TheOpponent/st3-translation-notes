@@ -1,120 +1,114 @@
 # Helper functions for translation scripts.
 
+import struct
 import re
 
-def ascii_to_sjis(input_str,break_lines=True,*args,**kwargs):
+def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     """Converts a string of ASCII characters to 
     byte-swapped Shift-JIS and null-terminate it."""
 
-    table = {'A':b'\x82\x60',
-    'B':b'\x82\x61',
-    'C':b'\x82\x62',
-    'D':b'\x82\x63',
-    'E':b'\x82\x64',
-    'F':b'\x82\x65',
-    'G':b'\x82\x66',
-    'H':b'\x82\x67',
-    'I':b'\x82\x68',
-    'J':b'\x82\x69',
-    'K':b'\x82\x6A',
-    'L':b'\x82\x6B',
-    'M':b'\x82\x6C',
-    'N':b'\x82\x6D',
-    'O':b'\x82\x6E',
-    'P':b'\x82\x6F',
-    'Q':b'\x82\x70',
-    'R':b'\x82\x71',
-    'S':b'\x82\x72',
-    'T':b'\x82\x73',
-    'U':b'\x82\x74',
-    'V':b'\x82\x75',
-    'W':b'\x82\x76',
-    'X':b'\x82\x77',
-    'Y':b'\x82\x78',
-    'Z':b'\x82\x79',
-    'a':b'\x82\x7A',
-    'b':b'\x82\x7B',
-    'c':b'\x82\x7C',
-    'd':b'\x82\x7D',
-    'e':b'\x82\x7E',
-    'f':b'\x82\x80',
-    'g':b'\x82\x87',
-    'h':b'\x82\x88',
-    'i':b'\x82\x89',
-    'j':b'\x82\x8A',
-    'k':b'\x82\x8B',
-    'l':b'\x82\x8C',
-    'm':b'\x82\x8D',
-    'n':b'\x82\x8E',
-    'o':b'\x82\x8F',
-    'p':b'\x82\x90',
-    'q':b'\x82\x91',
-    'r':b'\x82\x92',
-    's':b'\x82\x93',
-    't':b'\x82\x94',
-    'u':b'\x82\x95',
-    'v':b'\x82\x96',
-    'w':b'\x82\x97',
-    'x':b'\x82\x98',
-    'y':b'\x82\x99',
-    'z':b'\x82\x9A',
-    ' ':b'\x81\x40',
-    '.':b'\x81\x44',
-    ',':b'\x81\x43',
-    ':':b'\x81\x46',
-    ';':b'\x81\x47',
-    '?':b'\x81\x48',
-    '!':b'\x81\x49',
-    '"':b'\x81\x4A',
-    '—':b'\x81\x5C', # Em dash
-    '–':b'\x81\x5B', # En dash
-    '-':b'\x81\x5D', # Dash
-    '/':b'\x81\x5E',
-    '~':b'\x81\x60',
-    #'...':'8163', # Ellipsis
-    #'\'':'8165', # Opening single quotation
-    #'\'':'8166', # Closing single quotation
-    #'"':'8167', # Opening double quotation
-    #'"':'8168', # Closing double quotation
-    '(':b'\x81\x69',
-    ')':b'\x81\x6A',
-    '[':b'\x81\x6D',
-    ']':b'\x81\x6E',
-    # '{':'816F',
-    # '}':'8170',
-    '{':b'',
-    '}':b'', # Ignore curly brackets as they are used for control codes.
-    '+':b'\x81\x7B',
-    '-':b'\x81\x7C', # Minus
-    '×':b'\x81\x7E', # Multiplication sign
-    '÷':b'\x81\x80', 
-    '=':b'\x81\x81', 
-    '<':b'\x81\x83', 
-    '>':b'\x81\x84', 
-    '°':b'\x81\x8B', 
-    '\'':b'\x81\x8C', # Arc minute symbol; can be used as apostrophe
-    '$':b'\x81\x90',
-    '%':b'\x81\x93',
-    '#':b'\x81\x94',
-    '&':b'\x81\x95',
-    '*':b'\x81\x96',
-    '@':b'\x81\x97',
-    '☆':b'\x81\x99',
-    '★':b'\x81\x9A',
-    #'!?':'81AC',
-    #'!!':'81AD',
-    '0':b'\x82\x40',
-    '1':b'\x82\x41',
-    '2':b'\x82\x42',
-    '3':b'\x82\x43',
-    '4':b'\x82\x44',
-    '5':b'\x82\x45',
-    '6':b'\x82\x46',
-    '7':b'\x82\x47',
-    '8':b'\x82\x48',
-    '9':b'\x82\x49',
-    '\\':b'\x2F\x2F'
-    }
+    table = {'A': 33376,
+    'B': 33377,
+    'C': 33378,
+    'D': 33379,
+    'E': 33380,
+    'F': 33381,
+    'G': 33382,
+    'H': 33383,
+    'I': 33384,
+    'J': 33385,
+    'K': 33386,
+    'L': 33387,
+    'M': 33388,
+    'N': 33389,
+    'O': 33390,
+    'P': 33391,
+    'Q': 33392,
+    'R': 33393,
+    'S': 33394,
+    'T': 33395,
+    'U': 33396,
+    'V': 33397,
+    'W': 33398,
+    'X': 33399,
+    'Y': 33400,
+    'Z': 33401,
+    'a': 33402,
+    'b': 33403,
+    'c': 33404,
+    'd': 33405,
+    'e': 33406,
+    'f': 33408,
+    'g': 33415,
+    'h': 33416,
+    'i': 33417,
+    'j': 33418,
+    'k': 33419,
+    'l': 33420,
+    'm': 33421,
+    'n': 33422,
+    'o': 33423,
+    'p': 33424,
+    'q': 33425,
+    'r': 33426,
+    's': 33427,
+    't': 33428,
+    'u': 33429,
+    'v': 33430,
+    'w': 33431,
+    'x': 33432,
+    'y': 33433,
+    'z': 33434,
+    ' ': 33088,
+    '.': 33092,
+    ',': 33091,
+    ':': 33094,
+    ';': 33095,
+    '?': 33096,
+    '!': 33097,
+    '\'': 33100, # Apostrophe
+    '"': 33102,
+    '—': 33116, # Em dash
+    '–': 33115, # En dash
+    '-': 33117, # Dash
+    '/': 33118,
+    '~': 33120,
+    '‘': 33125, # Opening single quotation
+    '’': 33126, # Closing single quotation
+    '“': 33127, # Opening double quotation
+    '”': 33128, # Closing double quotation
+    '(': 33129,
+    ')': 33130,
+    '[': 33133,
+    ']': 33134,
+    '+': 33147,
+    '×': 33150, # Multiplication sign
+    '÷': 33152, # One value skipped internally for some reason.
+    '=': 33153,
+    '<': 33155,
+    '>': 33156,
+    '°': 33163,
+    '$': 33168,
+    '%': 33171,
+    '#': 33172,
+    '&': 33173,
+    '*': 33174,
+    '@': 33175,
+    '☆': 33177,
+    '★': 33178,
+    '0': 33344,
+    '1': 33345,
+    '2': 33346,
+    '3': 33347,
+    '4': 33348,
+    '5': 33349,
+    '6': 33350,
+    '7': 33351,
+    '8': 33352,
+    '9': 33353,
+    '\\': 12079, # 2F2F
+    '{': None, # Ignore curly brackets as they are used for control codes.
+    '}': None}
 
     if break_lines:
         input_str = linebreak(input_str,line_id=kwargs.get("line_id",None))[0]
@@ -126,7 +120,7 @@ def ascii_to_sjis(input_str,break_lines=True,*args,**kwargs):
     i = 0
     while i < len(input_str):
         if input_str[i] != "{":
-            output += table[input_str[i]]
+            output += struct.pack(">H",table[input_str[i]] + offset)
         else:
             # If { is encountered, parse as a control code and paste characters directly rather than translating them.
             while input_str[i+1] != "}": # Check next character and stop pasting when } is next.
@@ -157,7 +151,7 @@ def linebreak(input_str,line_id=None,length_limit=30,last_line_length_limit=28,l
         output = ""
         current_length = 0
         lines = 1
-        
+
         # Split input string into an enumerated list of each word. Forced line breaks are split into their own word.
         input_str = list(enumerate(input_str.replace(r"\n"," \\ ").split(" "),1))
 
