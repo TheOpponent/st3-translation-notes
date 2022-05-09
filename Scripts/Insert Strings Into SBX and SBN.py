@@ -1,4 +1,5 @@
-# This script reads a CSV file in the translate subdirectory and inserts the strings within into an uncompressed SBX or SBN script with a corresponding filename with extension .SBX.bin or .SBN in the source subdirectory.
+# This script reads a CSV file in the translate subdirectory and inserts the strings within into an uncompressed SBX or SBN script 
+# with a corresponding filename with extension .SBX.bin or .SBN in the source subdirectory.
 # It outputs files in the 'output' subdirectory with the corresponding extension. Pass SBX output files to a PRS compressor.
 # This assumes all string offsets are contiguous.
 # The first line in a script extraction contains a blank string. The offset of this line is used as the starting point.
@@ -40,16 +41,17 @@ def main():
                 # Set address and limits.
                 sbx_file.seek(offset + 4)
                 offset_table_address = struct.unpack("<I",sbx_file.read(4))[0] + offset
-                line_count = struct.unpack("<I",sbx_file.read(4))[0]
+                # line_count = struct.unpack("<I",sbx_file.read(4))[0]
 
                 # The first string is empty, which will cause the second offset to be 1 greater than the first.
                 new_offsets = bytearray()
                 new_strings = bytearray()
 
                 # Assume first offset is located in second 4-byte value of first entry in offset table.
-                sbx_file.seek(offset_table_address)
+                # Skip next 4 bytes, which is the line count.
+                sbx_file.seek(offset_table_address + 4)
                 current_offset = struct.unpack("<I",sbx_file.read(4))[0]
-                
+
                 # Read CSV file.
                 with open(os.path.join(translate_path,translate_file),encoding="utf-8") as file:
                     csv_file = csv.reader(file,delimiter="|")
@@ -63,7 +65,8 @@ def main():
                             line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
 
                         new_strings += line_encoded
-                        new_offsets += struct.pack("<I",current_offset)
+                        # Subtract 1 from current_offset to compensate for first empty string.
+                        new_offsets += struct.pack("<I",current_offset - 1) 
 
                         # Increase next offset by the length of the string in bytes.
                         current_offset += len(line_encoded)
@@ -88,7 +91,7 @@ def main():
                     # SBX files will be compressed later and have that information added after PRS compression.
                     output_header = b''
                     output_footer = b''
-            
+
                 with open(os.path.join(output_path,translate_base_name + ".out"),"wb") as file:
                     file.write(output_header + output_binary + output_footer)
                     print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written. PRS data: {swap_bytes(len(output_binary))}")

@@ -2,6 +2,7 @@
 # https://github.com/FraGag/prs.net/blob/master/FraGag.Compression.Prs/Prs.Impl.cs
 # This script decompresses SBX files, which are PRS-compressed files with extra wrapping added.
 # Uncompressed files are written into the 'source' subdirectory with extension .SBX.bin.
+# Existing files will be overwritten.
 #
 # prs.net original license:
 #
@@ -38,7 +39,7 @@ import clr
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 assembly_path = os.path.join(path,os.path.normpath(r".\lib\FraGag.Compression.Prs.dll"))
 clr.AddReference(assembly_path)
-import FraGag.Compression as Prs
+from FraGag.Compression import Prs
 
 source_path = os.path.join(path,"source")
 
@@ -56,7 +57,7 @@ def decompress(input_file):
         file.read(16) # Footer: CPRS....EOFC....
         print(f"{repr(input_file)}: Uncompressed size: {raw_length}. Compressed size: {data_length}. Compressed size with header: {padded_length}.")
 
-        output_data = Prs.Prs.Decompress(input_data)
+        output_data = Prs.Decompress(input_data)
 
         return output_data
 
@@ -82,7 +83,7 @@ def main():
 
             output_data = bytearray(decompress(input_file))
 
-            with open(os.path.join(source_path,file + ".bin"),"wb") as output_file:
+            with open(os.path.join(source_path,output_file + ".bin"),"wb") as output_file:
                 output_file.write(output_data)
 
     # If input and output files are not specified, read files in working directory.

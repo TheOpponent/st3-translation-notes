@@ -37,7 +37,7 @@ import clr
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 assembly_path = os.path.join(path,os.path.normpath(r".\lib\FraGag.Compression.Prs.dll"))
 clr.AddReference(assembly_path)
-import FraGag.Compression as Prs
+from FraGag.Compression import Prs
 
 def compress(input_file):
 
@@ -48,7 +48,7 @@ def compress(input_file):
 
         input_data = file.read()
         raw_length = len(input_data)
-        compressed_data = bytearray(Prs.Prs.Compress(input_data))
+        compressed_data = bytearray(Prs.Compress(input_data))
 
         while True:
             if len(compressed_data) % 4 != 0:
@@ -70,20 +70,27 @@ def compress(input_file):
 
 def main():
 
-    if len(sys.argv) >= 3:
+    if len(sys.argv) >= 2:
         input_file = sys.argv[1]
-        output_file = sys.argv[2]
 
         output_data = compress(input_file)
 
-        with open(output_file,"wb") as file:
-            file.write(output_data)
+        # Write output_data to output file if specified, else return it.
+        if len(sys.argv) >= 3:
+            output_file = sys.argv[2]
+
+            with open(output_file,"wb") as file:
+                file.write(output_data)
+
+                print(f"{input_file}: Wrote {len(output_data)} bytes.")
+
+        else:
+            return output_data
 
     else:
-        print("Specify input and output file.")
+        print("Specify input file and optional output file.")
         return
 
-    print(f"{input_file}: Wrote {len(output_data)} bytes.")
 
 if __name__ == "__main__":
     main()
