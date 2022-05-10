@@ -8,8 +8,8 @@
 # The left nybble represents the lower pixel and the right nybble represents the upper pixel.
 # 13 rows of these bytes create a 26 x 26 tile.
 # 
-# To create replacement tiles, create a non-transparent image with the following palette:
-# 00 10 20 30 40 50 60 70 80 90 A0 B0 C0 D0 E0 F0
+# To create replacement tiles, create a non-transparent image with the following 16-color palette:
+# 000000 101010 202020 303030 404040 505050 606060 707070 808080 909090 A0A0A0 B0B0B0 C0C0C0 D0D0D0 E0E0E0 F0F0F0
 #
 # Although the resulting image will be grayscale, this image should be saved as 8-bit RGB.
 # Image editors will frequently override indexed palettes when converting to grayscale,
