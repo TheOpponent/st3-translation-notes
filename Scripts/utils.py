@@ -16,8 +16,8 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     alternate font for areas outside of the dialogue box
     with a different font size.
     
-    The keyword arguments length_limit, last_line_length_limit, and 
-    line_limit can be passed to linebreak function."""
+    The keyword arguments length_limit, last_row_length_limit, and 
+    row_limit can be passed to linebreak function."""
 
     table = {'A': 33376,
     'B': 33377,
@@ -124,9 +124,9 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
 
     if break_lines:
         input_str = linebreak(input_str,line_id=kwargs.get("line_id",None),
-                              length_limit=kwargs.get("length_limit",31),
-                              last_line_length_limit=kwargs.get("last_line_length_limit",31),
-                              line_limit=kwargs.get("line_limit",4))[0]
+                              length_limit=kwargs.get("length_limit",37),
+                              last_row_length_limit=kwargs.get("last_row_length_limit",37),
+                              row_limit=kwargs.get("row_limit",3))[0]
 
     input_str = input_str.strip()
     
@@ -149,7 +149,7 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     return output
 
 
-def linebreak(input_str,line_id=None,length_limit=31,last_line_length_limit=31,line_limit=4):
+def linebreak(input_str,line_id=None,length_limit=37,last_row_length_limit=37,row_limit=3):
         """Break lines according to length_limit. Default length is 30.
         A backslash character is inserted at line breaks, 
         which is translated in ascii_to_sjis to byte 2F2F.
@@ -192,13 +192,13 @@ def linebreak(input_str,line_id=None,length_limit=31,last_line_length_limit=31,l
                 lines += 1
                 current_length = 0
 
-        if lines == line_limit and current_length > last_line_length_limit:
+        if lines == row_limit and current_length > last_row_length_limit:
             if line_id is not None:
                 print(f"WARNING: Last line limit overflow at line {line_id}: {output}")
             else:
                 print(f"WARNING: Last line limit overflow: {output}")
 
-        if lines > line_limit:
+        if lines > row_limit:
             if line_id is not None:
                 print(f"WARNING: Line break overflow at line {line_id}: {output}")
             else:
