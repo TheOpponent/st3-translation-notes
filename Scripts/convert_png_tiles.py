@@ -1,5 +1,5 @@
 # This script reads a PNG file containing a single row of 26 x 26 tiles and outputs binary data.
-# NumPy and PyPNG are required as dependencies.
+# NumPy and Pillow are required as dependencies.
 #
 # Specify an input PNG file and an optional output file as arguments.
 # If an output file is not given, the binary data will be written in the console.
@@ -21,7 +21,7 @@
 import struct
 import sys
 import numpy as np
-import png
+from PIL import Image
 
 def main():
 
@@ -29,20 +29,21 @@ def main():
         print("Specify input PNG file.")
         return
 
-    with open(sys.argv[1],"rb") as input_file:
+    with Image.open(sys.argv[1]) as input_file:
         output = b''
 
-        # Read image and split into equal number of 26 x 13 arrays.
-        image = png.Reader(file=input_file).asDirect()
-        image_2d = np.empty((image[1],image[0]),dtype="uint8")
-        rows = image[2]
+        # Read image and split into equal number of 26 x 26 arrays.
+        image = list(input_file.getdata(0))
+        image_size = input_file.size
+        image_2d = np.empty((image_size[1],image_size[0]),dtype="uint8")
+        
+        # rows = image[2]
         try:
-            for i in range(image[1]):
-                current_row = next(rows)
-                image_2d[i] = current_row[0::3] # Read only red channel.
+            for i in range(0,25):
+                image_2d[i] = image[i * image_size[0]:(i + 1) * image_size[0]]
 
             # Split into individual tiles.
-            tiles = np.hsplit(image_2d,image[0] / 26)
+            tiles = np.hsplit(image_2d,image_size[0] / 26)
             for i in tiles:
                 # Bitwise shift 4 to the right to obtain 0-F value for each pixel.
                 tile = np.right_shift(i,4)
