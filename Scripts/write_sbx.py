@@ -8,7 +8,7 @@ import os
 import sys
 import csv
 import struct
-from utils import *
+from utils import ascii_to_sjis, swap_bytes
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path,"translate")

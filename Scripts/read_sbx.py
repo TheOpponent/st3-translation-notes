@@ -12,6 +12,7 @@
 import os
 import sys
 import struct
+from utils import sbx
 
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
 source_path = os.path.join(path,"source")
@@ -23,18 +24,26 @@ def main():
         os.makedirs(translate_path)
 
     for file in os.listdir(source_path):
-        # Read files in working directory. Uncompressed SBX files begin at 0; SBN files contain the ASCR header in the first 8 bytes and should be skipped.
-        if file.lower().endswith(('.sbx.bin')):
-            offset = 0
-        elif file.lower().endswith(('.sbn')):
-            offset = 8
-        else:
-            continue
 
         # If first 4 bytes does not contain signature BA AF 55 CC, skip the file.
         with open(os.path.join(source_path,file),"rb") as f:
+
+            # Read files in working directory. Uncompressed SBX files begin at 0; SBN files contain the ASCR header in the first 8 bytes and should be skipped.
+            # if file.lower().endswith(('.sbx')):
+                # input_data = sbx.decompress(f)
+                # offset = 0
+            if file.lower().endswith(('.sbx.bin')):
+                # input_data = f.read()
+                offset = 0
+            elif file.lower().endswith(('.sbn')):
+                # input_data = f.read()
+                offset = 8
+            else:
+                continue
+            
             f.seek(offset)
             signature = f.read(4)
+
             if signature != b'\xBA\xAF\x55\xCC':
                 print("Not decompressed SBX or SBN:",file)
                 continue

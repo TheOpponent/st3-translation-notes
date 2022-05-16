@@ -6,7 +6,7 @@ import os
 import sys
 import csv
 import struct
-from utils import *
+from utils import ascii_to_sjis
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 source_path = os.path.join(path,"source")

@@ -5,7 +5,7 @@ import os
 import sys
 import csv
 import struct
-from utils import *
+from utils import ascii_to_sjis
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path,"translate")
@@ -109,20 +109,21 @@ def main():
                 # Output new offset table and strings.
                 output_binary = bytearray()
 
-                # Calculate new file size and repack line_count.
-                while True:
+                # Add padding.
+                new_strings += b'\x40'
+                while (len(new_offsets + new_strings) + 8) % 4 != 0:
                     new_strings += b'\x40'
-                    if (len(new_offsets + new_strings) + 8) % 4 == 0:
-                        new_length = struct.pack("<I",len(new_offsets + new_strings) + 4)
-                        break
 
-                # TODO: Subtract from padding area to offset new data, or remove padding completely.
+                # Calculate new file size and repack line_count.
+                new_length = struct.pack("<I",len(new_offsets + new_strings) + 4)
 
-                output_binary += b'ALPD' + new_length + struct.pack("<I",line_count) + new_offsets + new_strings + padding
+            # TODO: Subtract from padding area to offset new data, or remove padding completely.
 
-                with open(os.path.join(output_path,translate_base_name),"wb") as output_file:
-                    output_file.write(output_binary)
-                    print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written.")
+            output_binary += b'ALPD' + new_length + struct.pack("<I",line_count) + new_offsets + new_strings + padding
+
+            with open(os.path.join(output_path,translate_base_name),"wb") as output_file:
+                output_file.write(output_binary)
+                print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written.")
 
 
 if __name__ == "__main__":

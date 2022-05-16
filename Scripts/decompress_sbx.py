@@ -1,5 +1,6 @@
 # Uses the prs.net implementation of PRS compression:
 # https://github.com/FraGag/prs.net/blob/master/FraGag.Compression.Prs/Prs.Impl.cs
+#
 # This script decompresses SBX files, which are PRS-compressed files with extra wrapping added.
 # Uncompressed files are written into the 'source' subdirectory with extension .SBX.bin.
 # Existing files will be overwritten.
@@ -34,7 +35,7 @@
 import os
 import sys
 import struct
-import clr 
+import clr
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 assembly_path = os.path.join(path,os.path.normpath(r".\lib\FraGag.Compression.Prs.dll"))
@@ -46,8 +47,12 @@ source_path = os.path.join(path,"source")
 def decompress(input_file):
 
     with open(input_file,"rb") as file:
+        # If first 4 bytes does not contain signature 'ASCR', skip the file.
+        if file.read(4) != b'ASCR':
+            print("Not SBX:",input_file)
+            return
+
         # Read bytes as little-endian, unsigned integers.
-        file.seek(4)
         padded_length = struct.unpack("<I",file.read(4))[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
         raw_length = struct.unpack("<I",file.read(4))[0] # Uncompressed data size.
         data_length = struct.unpack("<I",file.read(4))[0] # Compressed data size. This value contains only the actual data without the 'CPRS' signature.
@@ -55,9 +60,10 @@ def decompress(input_file):
         input_data = bytearray(file.read(data_length))
         # Remaining bytes may contain padding bytes of 00.
         file.read(16) # Footer: CPRS....EOFC....
-        print(f"{repr(input_file)}: Uncompressed size: {raw_length}. Compressed size: {data_length}. Compressed size with header: {padded_length}.")
 
         output_data = Prs.Decompress(input_data)
+
+        print(f"{repr(input_file)}: Uncompressed size: {raw_length}. Compressed size: {data_length}. Compressed size with header: {padded_length}.")
 
         return output_data
 
@@ -72,32 +78,25 @@ def main():
         os.makedirs(source_path)
 
     if len(sys.argv) >= 3:
-        input_file = sys.argv[1]
-        output_file = sys.argv[2]
+        output_data = bytearray(decompress(sys.argv[1]))
 
-        # If first 4 bytes does not contain signature 'ASCR', skip the file.
-        with open(input_file,"rb") as f:
-            if f.read(4) != b'ASCR':
-                print("Not SBX:",f)
-                return        
+        with open(sys.argv[2],"wb") as output_file:
+            output_file.write(output_data)
 
-            output_data = bytearray(decompress(input_file))
+        return
 
-            with open(os.path.join(source_path,output_file + ".bin"),"wb") as output_file:
-                output_file.write(output_data)
-
+    file_count = 0
     # If input and output files are not specified, read files in working directory.
-    for file in os.listdir(path):
-        if file.lower().endswith(('.sbx')):
-            with open(os.path.join(path,file),"rb") as f:
-                if f.read(4) != b'ASCR':
-                    print("Not SBX:",f)
-                    return
+    for file in [i for i in os.listdir(path) if i.lower().endswith(('.sbx'))]:
+        output_data = bytearray(decompress(file))
 
-            output_data = bytearray(decompress(file))
-            # Output decompressed files in 'source' subdirectory.
-            with open(os.path.join(source_path,file + ".bin"),"wb") as output_file:
-                output_file.write(output_data)
+        # Output decompressed files in 'source' subdirectory.
+        with open(os.path.join(source_path,file + ".bin"),"wb") as output_file:
+            output_file.write(output_data)
+
+        file_count += 1
+
+    print(f"Decompressed {file_count} files.")
 
 
 if __name__ == "__main__":

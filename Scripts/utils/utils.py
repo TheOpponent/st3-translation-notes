@@ -150,61 +150,61 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
 
 
 def linebreak(input_str,line_id=None,length_limit=37,last_row_length_limit=37,row_limit=3):
-        """Break lines according to length_limit. Default length is 30.
-        A backslash character is inserted at line breaks, 
-        which is translated in ascii_to_sjis to byte 2F2F.
-        
-        Control code sequences are not counted in word length,
-        assuming they consist of {} containing only letters, numbers,
-        commas, and @. Because of the need for non-printable control 
-        codes, the standard text wrapping functions cannot be used.
-        
-        Returns a tuple containing the output string and the number of 
-        lines.
-        """
-        
-        output = ""
-        current_length = 0
-        lines = 1
+    """Break lines according to length_limit. Default length is 30.
+    A backslash character is inserted at line breaks, 
+    which is translated in ascii_to_sjis to byte 2F2F.
+    
+    Control code sequences are not counted in word length,
+    assuming they consist of {} containing only letters, numbers,
+    commas, and @. Because of the need for non-printable control 
+    codes, the standard text wrapping functions cannot be used.
+    
+    Returns a tuple containing the output string and the number of 
+    lines.
+    """
+    
+    output = ""
+    current_length = 0
+    lines = 1
 
-        # Split input string into an enumerated list of each word. Forced line breaks are split into their own word.
-        input_str = list(enumerate(input_str.replace(r"\n"," \\ ").split(" "),1))
+    # Split input string into an enumerated list of each word. Forced line breaks are split into their own word.
+    input_str = list(enumerate(input_str.replace(r"\n"," \\ ").replace("//"," \\ ").split(" "),1))
 
-        for i in input_str:
-            word_length = len(i[1]) - sum([len(p) for p in re.findall("{[a-zA-Z0-9,@!=]+}",i[1])]) # Do not count control code sequences in word length.
+    for i in input_str:
+        word_length = len(i[1]) - sum([len(p) for p in re.findall("{[a-zA-Z0-9,@!=]+}",i[1])]) # Do not count control code sequences in word length.
 
-            # Insert word that is not a forced line break.
-            if i[1] != "\\":
-                if current_length + word_length + 1 <= length_limit:
-                    output += i[1]
-                    current_length += word_length + 1
-                else:
-                    output = output.rstrip() + "\\" + i[1]
-                    lines += 1
-                    current_length = word_length
-                # Add a space if there are more words remaining, or break otherwise.
-                if i[0] < len(input_str):
-                    output += " "
-                else:
-                    break
+        # Insert word that is not a forced line break.
+        if i[1] != "\\":
+            if current_length + word_length + 1 <= length_limit:
+                output += i[1]
+                current_length += word_length + 1
             else:
-                output = output.rstrip() + "\\" # Remove space inserted by previous word.
+                output = output.rstrip() + "\\" + i[1]
                 lines += 1
-                current_length = 0
-
-        if lines == row_limit and current_length > last_row_length_limit:
-            if line_id is not None:
-                print(f"WARNING: Last line limit overflow at line {line_id}: {output}")
+                current_length = word_length
+            # Add a space if there are more words remaining, or break otherwise.
+            if i[0] < len(input_str):
+                output += " "
             else:
-                print(f"WARNING: Last line limit overflow: {output}")
+                break
+        else:
+            output = output.rstrip() + "\\" # Remove space inserted by previous word.
+            lines += 1
+            current_length = 0
 
-        if lines > row_limit:
-            if line_id is not None:
-                print(f"WARNING: Line break overflow at line {line_id}: {output}")
-            else:
-                print(f"WARNING: Line break overflow: {output}")
+    if lines == row_limit and current_length > last_row_length_limit:
+        if line_id is not None:
+            print(f"WARNING: Last row limit overflow at line {line_id}: {output}")
+        else:
+            print(f"WARNING: Last row limit overflow: {output}")
 
-        return (output,lines)
+    if lines > row_limit:
+        if line_id is not None:
+            print(f"WARNING: Line break overflow at line {line_id}: {output}")
+        else:
+            print(f"WARNING: Line break overflow: {output}")
+
+    return (output,lines)
 
 
 def swap_bytes(value):

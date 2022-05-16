@@ -50,20 +50,16 @@ def compress(input_file):
         raw_length = len(input_data)
         compressed_data = bytearray(Prs.Compress(input_data))
 
-        while True:
-            if len(compressed_data) % 4 != 0:
-                compressed_data.append(0)
-            else:
-                break
+        compressed_data.append(0)
+        while len(compressed_data) % 4 != 0:
+            compressed_data.append(0)
 
         output_length = len(compressed_data)
         # padded_length includes first 8 bytes of footer.
         padded_length = output_length + 8
 
-        compressed_data.extend([67, 80, 82, 83, 0, 0, 0, 0, 69, 79, 70, 67, 0, 0, 0, 0]) # Footer: CPRS....EOFC....
-
         # The header of the output includes the padded length, input data length, and unpadded length.
-        output_data = b''.join([b'ASCR',struct.pack("<I",padded_length),struct.pack("<I",raw_length),struct.pack("<I",output_length),compressed_data])
+        output_data = b''.join([b'ASCR',struct.pack("<I",padded_length),struct.pack("<I",raw_length),struct.pack("<I",output_length),compressed_data,b'CPRS\x00\x00\x00\x00EOFC\x00\x00\x00\x00'])
 
     return output_data
 
