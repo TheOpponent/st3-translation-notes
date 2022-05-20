@@ -13,7 +13,7 @@ lip_path = os.path.join(path,"source")
 output_path = os.path.join(path,"output")
 
 # Adjust this value to the desired number of frames between text characters.
-DELAY = 3
+DELAY = 2
 
 def main():
 
