@@ -1,6 +1,6 @@
 # Based on the scripts from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695 by ZetpeR xax007@yandex.ru.
 #
-# This script reads uncompressed SBX files with extension .SBX.bin, such as those output by the Decompress SBX script, 
+# This script reads uncompressed SBX files with extension .SBX.bin, such as those output by decompress_sbx.py, 
 # and SBN files in the 'source' subdirectory.
 # It outputs CSV files in the 'translate' subdirectory, using pipe characters | as delimiters.
 #
@@ -8,11 +8,9 @@
 # Rows for the strings contain: string offset, string type ("code" or "dialogue"), Shift-JIS text.
 # Rows for binary data contain: four data values, data offset, subroutine name from strings, bytes.
 
-
 import os
 import sys
 import struct
-from utils import sbx
 
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
 source_path = os.path.join(path,"source")
