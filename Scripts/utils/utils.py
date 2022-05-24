@@ -141,6 +141,7 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
             while input_str[i+1] != "}": # Check next character and stop pasting when } is next.
                 i += 1
                 output += bytes(input_str[i],"shift_jis_2004")
+            i += 1 # Skip } character.
             
         i += 1
 
