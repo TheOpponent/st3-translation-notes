@@ -4,10 +4,12 @@
 # This assumes all string offsets are contiguous.
 # The first line in a script extraction contains a blank string. The offset of this line is used as the starting point.
 
-import os
-import sys
 import csv
+import os
+import re
 import struct
+import sys
+
 from utils.utils import ascii_to_sjis, swap_bytes
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
@@ -57,8 +59,8 @@ def main():
                     csv_file = csv.reader(file,delimiter="|")
 
                     for i in csv_file:
-                        if i[1] != "code" and i[2].isascii():
-                            # Only translate strings that are not type "code" and contain only ASCII characters.
+                        if i[1] != "code" and re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*()_|+\-×÷=?;:<>°\'",.<>\[\]/—–‘’“”☆★ ]+',i[2],re.I):
+                            # Only translate strings that are not type "code" and contain only non-Japanese characters.
                             line_encoded = ascii_to_sjis(i[2],line_id=i[0])
                         else:
                             # Otherwise, assume string is unchanged Japanese text or a subroutine name and encode as-is.

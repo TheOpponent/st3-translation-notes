@@ -1,10 +1,12 @@
 # This script reads a CSV file in the translate subdirectory and inserts the strings within into a LIPSYNC*.LIP with a corresponding filename in the source subdirectory.
 # It outputs files in the 'output' subdirectory with extension .LIP.
 
-import os
-import sys
 import csv
+import os
+import re
 import struct
+import sys
+
 from utils.utils import ascii_to_sjis
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
@@ -13,7 +15,7 @@ lip_path = os.path.join(path,"source")
 output_path = os.path.join(path,"output")
 
 # Adjust this value to the desired number of frames between text characters.
-DELAY = 2
+DELAY = 1
 
 def main():
 
@@ -57,8 +59,8 @@ def main():
                         cmd_sequence = ''
                         new_cmd_sequence = ''
 
-                        # Check if entire line consists of ASCII characters and assume line was altered.
-                        if i[2].isascii():
+                        # Check if entire line consists of non-Japanese characters and assume line was altered.
+                        if re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*()_|+\-×÷=?;:<>°\'",.<>\[\]/—–‘’“”☆★ ]+',i[2],re.I):
                             
                             line_encoded = ascii_to_sjis(i[2],line_id=i[1])
 
