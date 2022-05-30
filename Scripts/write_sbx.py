@@ -59,7 +59,7 @@ def main():
                     csv_file = csv.reader(file,delimiter="|")
 
                     for i in csv_file:
-                        if i[1] != "code" and re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*()_|+\-×÷=?;:<>°\'",.<>\[\]/—–‘’“”☆★ ]+',i[2],re.I):
+                        if i[1] != "code" and re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*(){}_|+\-×÷=?;:<>°\'",.\[\]/—–‘’“”☆★ ]+',i[2],re.I):
                             # Only translate strings that are not type "code" and contain only non-Japanese characters.
                             line_encoded = ascii_to_sjis(i[2],line_id=i[0])
                         else:
