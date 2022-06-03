@@ -47,10 +47,10 @@ source_path = os.path.join(path,"source")
 def decompress(input_file):
 
     with open(input_file,"rb") as file:
-        # If first 4 bytes does not contain signature 'ASCR', skip the file.
-        if file.read(4) != b'ASCR':
-            print("Not SBX:",input_file)
-            return
+        # If first 4 bytes does not contain a known signature, skip the file.
+        signature = file.read(4)
+        if signature not in [b'ASCR',b'BPV1']:
+            print(f"Unknown signature '{signature.decode('ascii')}' in {input_file}.")
 
         # Read bytes as little-endian, unsigned integers.
         padded_length = struct.unpack("<I",file.read(4))[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
@@ -59,9 +59,14 @@ def decompress(input_file):
 
         input_data = bytearray(file.read(data_length))
         # Remaining bytes may contain padding bytes of 00.
+        # The EOFC footer will only be found in files containing a single chunk of PRS-compressed data.
         file.read(16) # Footer: CPRS....EOFC....
 
-        output_data = Prs.Decompress(input_data)
+        try:
+            output_data = signature + struct.pack("<I",raw_length) + bytes(Prs.Decompress(input_data))
+        except:
+            print("Unable to decompress:",input_file)
+            return None
 
         print(f"{repr(input_file)}: Uncompressed size: {raw_length}. Compressed size: {data_length}. Compressed size with header: {padded_length}.")
 
@@ -78,10 +83,11 @@ def main():
         os.makedirs(source_path)
 
     if len(sys.argv) >= 3:
-        output_data = bytearray(decompress(sys.argv[1]))
+        output_data = decompress(sys.argv[1])
 
-        with open(sys.argv[2],"wb") as output_file:
-            output_file.write(output_data)
+        if output_data is not None:
+            with open(sys.argv[2],"wb") as output_file:
+                output_file.write(bytearray(output_data))
 
         return
 

@@ -47,8 +47,12 @@ def compress(input_file):
             return
 
         input_data = file.read()
+        signature = input_data[0:4]
         raw_length = len(input_data)
-        compressed_data = bytearray(Prs.Compress(input_data))
+        if signature == b'ASCR':
+            compressed_data = bytearray(Prs.Compress(input_data))
+        elif signature == b'BPV1':
+            compressed_data = bytearray(Prs.Compress(input_data[8:]))
 
         compressed_data.append(0)
         while len(compressed_data) % 4 != 0:
@@ -59,7 +63,9 @@ def compress(input_file):
         padded_length = output_length + 8
 
         # The header of the output includes the padded length, input data length, and unpadded length.
-        output_data = b''.join([b'ASCR',struct.pack("<I",padded_length),struct.pack("<I",raw_length),struct.pack("<I",output_length),compressed_data,b'CPRS\x00\x00\x00\x00EOFC\x00\x00\x00\x00'])
+        output_data = b''.join([signature,struct.pack("<I",padded_length),struct.pack("<I",raw_length),struct.pack("<I",output_length),compressed_data,b'CPRS\x00\x00\x00\x00'])
+        if signature == b'ASCR':
+            output_data += b'EOFC\x00\x00\x00\x00'
 
     return output_data
 
