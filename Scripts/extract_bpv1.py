@@ -10,6 +10,7 @@ from collections import namedtuple
 
 def extract_bpv1(bpv1_file):
 
+    textures_written = 0
     BPV1Texture = namedtuple("BPV1Texture","offset, format, value1, value2, width, height, value3, value4, value5, value6, value7")
 
     with open(bpv1_file,"rb") as f:
@@ -70,24 +71,20 @@ def extract_bpv1(bpv1_file):
                         with open(bpv1_file + filename + ".pvr","wb") as output_file:
                             output_file.write(output)
                             print(f"{output_file.name}: Wrote {len(output)} bytes. PVR format: {hex(data.format[0])}, {hex(data.format[1])}. Dimensions: {data.width} x {data.height}.")
+                            textures_written += 1
 
                 else:
+                    print(f"Extracted {textures_written} textures.")
                     break
 
 
 def main():
 
     if len(sys.argv) > 1:
-        extract_bpv1(sys.argv[1])
+        for i in sys.argv[1:]:
+            extract_bpv1(i)
     else:
-        print("Specify input file containing BPV1 data.")
+        print("Specify input file(s) containing BPV1 data.")
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
