@@ -54,7 +54,7 @@ def extract_adcg(adcg_file):
 
                 chunk_size = struct.pack("<I",len(texture_data) + 8)
 
-                filename = f"_{hex(abs_offset)}_({data.x}, {data.y})"
+                filename = f"_({data.x}, {data.y})_{hex(abs_offset)}"
 
                 output = b'PVRT' + chunk_size + pvr_format + b'\x00\x00' + struct.pack("<H",texture_width) + struct.pack("<H",texture_height) + texture_data
 
