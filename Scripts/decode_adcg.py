@@ -89,6 +89,8 @@ def weave_adcg(input_data):
 
 def extract_adcg(input_file):
     """From input_file, searches for ADCG chunks and decompresses them.
+    The original uncompressed ADCG data is saved to file, as its header is
+    required to reconstruct the file after editing the image.
     Each chunk is then assembled into a complete image file and saved as PNG."""
 
     files_written = 0
@@ -112,6 +114,10 @@ def extract_adcg(input_file):
 
                     adcg_uncompressed = bytes(prs.decompress(adcg_prs_data))
 
+                    # Save uncompressed ADCG data to file.
+                    with open(input_file + "_" + str(files_written) + "_" + abs_offset + ".adcg","wb") as raw_file:
+                        raw_file.write(adcg_uncompressed)
+
                     output_image = weave_adcg(adcg_uncompressed)
 
                     with open(input_file + "_" + str(files_written) + "_" + abs_offset + ".png","wb") as output_file:
@@ -120,7 +126,7 @@ def extract_adcg(input_file):
                         files_written += 1
 
                 else:
-                    print(f"Wrote {files_written} files.")
+                    print(f"Wrote {files_written} ADCG + PNG file pairs.")
                     break
 
     os.remove("~temp.pvr")
