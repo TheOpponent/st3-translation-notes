@@ -1,0 +1,25 @@
+
+Pvr2Png 1.01 - Texture converter (PowerVR/Dreamcast) - Gzav 14/08/00, 24/09/00
+
+usage: pvr2png <source> [<destination>] [-i] [-q] [-?]
+               [-w<n>] [-h<n>] [-r|-t|-v|-16|-32|-64|-128]
+               [-555|-1555|-4444|-y|-b] [-n|-m]
+
+<source>         : pvr file or source directory
+<destination>    : png file or destination directory (default: current dir.)
+-i               : display information only (no conversion)
+-q               : quiet mode
+-?               : this help
+
+Advanced options : force a specific format (bypass PVRT header info)
+-w<n>            : texture width  (example: -w256)
+-h<n>            : texture height (example: -h128)
+-r               : encoding rectangle
+-t               : encoding twiddle
+-v               : encoding VQ
+-16|-32|-64|-128 : encoding smallVQ 16, 32, 64 or 128
+-555|-1555|-4444 : pixel format RGB555, ARGB1555 or ARGB4444
+-y|-b            : pixel format YUV422 or BUMP
+-n               : texture contains no mipmap
+-m               : texture contains mipmap
+
