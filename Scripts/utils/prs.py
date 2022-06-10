@@ -49,7 +49,7 @@ def compress(input_data):
 
     signature = input_data[0:4]
     raw_length = len(input_data)
-    compressed_data = bytearray(Prs.Compress(input_data))
+    compressed_data = bytearray(Prs.Compress(input_data[8:]))
 
     while True:
         if len(compressed_data) % 4 != 0:
