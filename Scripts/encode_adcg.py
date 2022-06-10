@@ -33,6 +33,7 @@ def encode_adcg(input_adcg,input_png,texture_size=64):
         adcg_header = adcg.read(32)
         textures_num = struct.unpack("<I",adcg_header[12:16])[0]
         adcg_header += adcg.read(textures_num * 16)
+        # TODO: Read texture format from header and form png2pvr_args.
 
     # Get crop coordinates.
     crop_boxes = []
