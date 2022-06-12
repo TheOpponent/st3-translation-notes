@@ -2,7 +2,8 @@
 # Pillow is required as a dependency.
 #
 # The decompressed ADCG chunks are output in the working directory with the extension .adcg.
-# In files that contain them, ADCG headers are preceded by an AGR1 or AGR2 signature, 
+# The decompressed image data is then weaved into a complete image and saved as PNG.
+# In files that contain them, ADCG headers are preceded by an AGR1 or AGR2 signature,
 # which is followed by 00 00 00 00.
 # Some values in the ADCG header are currently unknown.
 
@@ -28,7 +29,7 @@ def weave_adcg(input_data):
     and attmpts to assemble it into a full image based on the properties
     in the ADCG header."""
 
-    ADCGSubTexture = namedtuple("ADCGTexture","id offset x y value1")
+    ADCGSubTexture = namedtuple("ADCGSubTexture","id offset x y value1")
 
     with io.BytesIO(input_data) as stream:
         signature = stream.read(4)
@@ -83,62 +84,97 @@ def weave_adcg(input_data):
             # Load converted texture into an Image object.
             with Image.open("~temp.png") as png:
                 output_image.paste(png,(data.x,data.y))
-            
+
         return output_image
 
 
-def extract_adcg(input_file):
+def extract_adcg(input_file,offset=0,end=-1):
     """From input_file, searches for ADCG chunks and decompresses them.
     The original uncompressed ADCG data is saved to file, as its header is
     required to reconstruct the file after editing the image.
-    Each chunk is then assembled into a complete image file and saved as PNG."""
+    Each chunk is then assembled into a complete image file and saved as PNG.
 
+    If the offset argument is set, start searching that many bytes into the file.
+    If the end argument is set, stop searching after this many bytes."""
+
+    adcg_index = 0
     files_written = 0
 
     with open(input_file,"rb") as f:
+
         with mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ) as mm:
+
+            if end < 0:
+                end = len(mm)
+
             while True:
                 # Decompress a single ADCG chunk.
                 adcg_pos = mm.find(b'ADCG',mm.tell())
+
+                if adcg_pos > end:
+                    break
+
                 if adcg_pos != -1:
                     mm.seek(adcg_pos)
 
-                    abs_offset = hex(mm.tell())
-                    adcg_prs_data = bytearray()
-                    while True:
-                        buffer = mm.read(4)
-                        adcg_prs_data += buffer
-                        if buffer == b'EOFC':
-                            adcg_prs_data += mm.read(4)
-                            break
+                    # Skip offset bytes, but attempt to keep index number accurate.
+                    if mm.tell() >= offset:
+                        abs_offset = hex(mm.tell())
+                        adcg_prs_data = bytearray()
 
-                    adcg_uncompressed = bytes(prs.decompress(adcg_prs_data))
+                        while True:
+                            buffer = mm.read(4)
+                            adcg_prs_data += buffer
+                            if buffer == b'EOFC':
+                                adcg_prs_data += mm.read(4)
+                                break
 
-                    # Save uncompressed ADCG data to file.
-                    with open(input_file + "_" + str(files_written) + "_" + abs_offset + ".adcg","wb") as raw_file:
-                        raw_file.write(adcg_uncompressed)
+                        try:
+                            adcg_uncompressed = bytes(prs.decompress(adcg_prs_data))
+                        except:
+                            print(f"Error processing ADCG chunk at {abs_offset}. Continuing with next chunk.")
+                            continue
 
-                    output_image = weave_adcg(adcg_uncompressed)
+                        # Save uncompressed ADCG data and PNG to file.
+                        filename = input_file + "_" + str(adcg_index).zfill(4) + "_" + abs_offset
 
-                    with open(input_file + "_" + str(files_written) + "_" + abs_offset + ".png","wb") as output_file:
-                        output_image.save(output_file)
-                        print(f"{output_file.name}: Dimensions: {output_image.size}.")
-                        files_written += 1
+                        with open(filename + ".adcg","wb") as raw_file:
+                            raw_file.write(adcg_uncompressed)
 
-                else:
-                    print(f"Wrote {files_written} ADCG + PNG file pairs.")
-                    break
+                        output_image = weave_adcg(adcg_uncompressed)
 
-    os.remove("~temp.pvr")
-    os.remove("~temp.png")
+                        with open(filename + ".png","wb") as output_file:
+                            output_image.save(output_file)
+                            files_written += 1
+                            print(f"{output_file.name}: Dimensions: {output_image.size}.")
+
+                    else:
+                        print(f"Skipping ADCG chunk {str(adcg_index).zfill(4)} at {hex(mm.tell())}.")
+                        mm.seek(4,1)
+
+                    adcg_index += 1
+
+            print(f"Wrote {files_written} ADCG + PNG file pairs.")
+
+    if os.path.isfile("~temp.pvr"):
+        os.remove("~temp.pvr")
+    if os.path.isfile("~temp.png"):
+        os.remove("~temp.png")
 
 
 def main():
-    if len(sys.argv) > 1:
-        for i in sys.argv[1:]:
-            extract_adcg(i)
+
+    if len(sys.argv) > 2:
+        if len(sys.argv) >= 4:
+            extract_adcg(sys.argv[1],int(sys.argv[2]),int(sys.argv[3]))
+        elif len(sys.argv) == 3:
+            extract_adcg(sys.argv[1],int(sys.argv[2]))
+        else:
+            extract_adcg(sys.argv[1])
+    elif len(sys.argv) == 2:
+        extract_adcg(sys.argv[1])
     else:
-        print("Specify input file(s) containing ADCG data.")
+        print("Specify input file containing ADCG data.\nOptional arguments: number of bytes to skip; number of bytes to search.")
 
 
 if __name__ == "__main__":
