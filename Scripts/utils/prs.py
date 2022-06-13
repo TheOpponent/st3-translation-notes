@@ -36,8 +36,8 @@ import struct
 import sys
 import clr 
 
-path = os.path.realpath(os.path.dirname(sys.argv[0]))
-assembly_path = os.path.join(path,os.path.normpath(r".\lib\FraGag.Compression.Prs.dll"))
+path = os.path.realpath(os.path.dirname(__file__))
+assembly_path = os.path.join(path,os.path.normpath(r"..\lib\FraGag.Compression.Prs.dll"))
 clr.AddReference(assembly_path)
 from FraGag.Compression import Prs
 
@@ -94,14 +94,15 @@ def main():
     if len(sys.argv) >= 4:
         with open(sys.argv[2],"rb") as input_file:
             if sys.argv[1] == "-c":
-                output_data = compress(input_file)
+                output_data = compress(input_file.read())
 
             elif sys.argv[1] == "-d":
-                output_data = decompress(input_file)
+                output_data = decompress(input_file.read())
 
         if output_data:
             with open(sys.argv[3],"wb") as output_file:
                 output_file.write(output_data)
+                print(f"Wrote {len(output_data)} bytes.")
                 return
     
     print("Usage: [-c] [-d] INPUT_FILE OUTPUT_FILE")

@@ -183,7 +183,7 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
 
 
 def linebreak(input_str,line_id=None,length_limit=37,last_row_length_limit=37,row_limit=3):
-    """Break lines according to length_limit. Default length is 30.
+    """Break lines according to length_limit. Default length is 37.
     A backslash character is inserted at line breaks, 
     which is translated in ascii_to_sjis to byte 2F2F.
     
@@ -248,7 +248,8 @@ def swap_bytes(value):
     return str[6:8] + str[4:6] + str[2:4] + str[0:2]    
 
 
-if __name__ == "__main__":
+def main():
+
     while True:
         input_str = input("String (Input blank string to exit): ")
         if input_str != "":
@@ -256,3 +257,6 @@ if __name__ == "__main__":
         else:
             break
         
+
+if __name__ == "__main__":
+    main()
