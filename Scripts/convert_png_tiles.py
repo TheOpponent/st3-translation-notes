@@ -23,13 +23,9 @@ import sys
 import numpy as np
 from PIL import Image
 
-def main():
+def convert_font(input_file):
 
-    if len(sys.argv) < 2:
-        print("Specify input PNG file.")
-        return
-
-    with Image.open(sys.argv[1]) as input_file:
+    with Image.open(input_file) as input_file:
         output = b''
 
         # Read image and split into equal number of 26 x 26 arrays.
@@ -37,9 +33,8 @@ def main():
         image_size = input_file.size
         image_2d = np.empty((image_size[1],image_size[0]),dtype="uint8")
         
-        # rows = image[2]
         try:
-            for i in range(0,25):
+            for i in range(0,26):
                 image_2d[i] = image[i * image_size[0]:(i + 1) * image_size[0]]
 
             # Split into individual tiles.
@@ -73,6 +68,15 @@ def main():
             print(output.hex())
             print("\nPaste the above hex into SKFONT.CG starting at the tile(s) to replace.")
 
+
+def main():
+
+    if len(sys.argv) < 2:
+        print("Specify input PNG file.")
+        return
+
+    else:
+        convert_font(sys.argv[1])
 
 if __name__ == "__main__":
     main()
