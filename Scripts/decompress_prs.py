@@ -47,11 +47,7 @@ source_path = os.path.join(path,"source")
 def decompress(input_file):
 
     with open(input_file,"rb") as file:
-        # If first 4 bytes does not contain a known signature, skip the file.
         signature = file.read(4)
-        if signature not in [b'ASCR',b'BPV1']:
-            print(f"Unknown signature '{signature.decode('ascii')}' in {input_file}.")
-
         # Read bytes as little-endian, unsigned integers.
         padded_length = struct.unpack("<I",file.read(4))[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
         raw_length = struct.unpack("<I",file.read(4))[0] # Uncompressed data size.
@@ -60,7 +56,7 @@ def decompress(input_file):
         input_data = bytearray(file.read(data_length))
         # Remaining bytes may contain padding bytes of 00.
         # The EOFC footer will only be found in files containing a single chunk of PRS-compressed data.
-        file.read(16) # Footer: CPRS....EOFC....
+        file.read(8) # Footer: CPRS....EOFC....
 
         try:
             output_data = signature + struct.pack("<I",raw_length) + bytes(Prs.Decompress(input_data))
