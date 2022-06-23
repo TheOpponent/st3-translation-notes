@@ -1,7 +1,7 @@
 # Based on the scripts from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695 by ZetpeR xax007@yandex.ru.
 #
-# This script reads uncompressed SBX files with extension .SBX.bin, such as those output by decompress_sbx.py, 
-# and SBN files in the 'source' subdirectory.
+# This script reads uncompressed SBX files with extension .SBX.bin, 
+# such as those output by decompress_prs.py, and SBN files in the 'source' subdirectory.
 # It outputs CSV files in the 'translate' subdirectory, using pipe characters | as delimiters.
 #
 # Two CSV values are written for each file, one for the strings and one for the binary data.
@@ -11,6 +11,7 @@
 import os
 import sys
 import struct
+from utils.utils import read_string
 
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
 source_path = os.path.join(path,"source")
@@ -66,30 +67,20 @@ def main():
 
                 # Retrieve text.
                 f.seek(data_location)
-                byte_string = bytearray()
-                
-                # Parse each string at the addresses in the 4-byte offset list. Script text is read as Shift_JIS-2004.
-                # https://en.wikipedia.org/wiki/Shift_JIS#Shift_JISx0213_and_Shift_JIS-2004
-                while True:
-                    bytes = f.read(1)
-                    if bytes == b'\x00': # Strings are null-terminated.
-                        byte_string_decoded = byte_string.decode("shift_jis_2004")
-                        if byte_string_decoded.isascii():
-                            string_type = "code"
-                        else:
-                            string_type = "dialogue"
-                        break
-                    byte_string += bytes
+                text = read_string(f)
+                if text.isascii():
+                    string_type = "code"
+                else:
+                    string_type = "dialogue"
 
-                string_data.append([str(i) for i in [hex(data_location),string_type,byte_string_decoded]])
-                strings.append(byte_string_decoded)
+                string_data.append([str(i) for i in [hex(data_location),string_type,text]])
+                strings.append(text)
 
             with open(os.path.join(translate_path, file + ".csv"),"w", encoding="utf-8") as output_file:
                 for i in string_data:
                     output = "|".join(i)
                     output_file.write(output + "\n")
                     
-
             # Read the binary data table and output raw values in a separate CSV file.
             binary_data = []
             data_location = binary_location + (binary_length * 16)

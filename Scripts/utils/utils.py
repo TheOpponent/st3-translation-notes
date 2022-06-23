@@ -248,7 +248,29 @@ def swap_bytes(value):
     return str[6:8] + str[4:6] + str[2:4] + str[0:2]    
 
 
+def read_string(file,encoding="shift_jis_2004"):
+    """Read a null-terminated string from a file object opened in 
+    binary mode, using the codec given by the encoding argument. 
+
+    Script text is read as Shift_JIS-2004, which is the default encoding.
+    https://en.wikipedia.org/wiki/Shift_JIS#Shift_JISx0213_and_Shift_JIS-2004
+    
+    If encoding is None, the string is not decoded."""
+
+    byte_string = bytearray()
+    while True:
+        bytes = file.read(1)
+        if bytes == b'\x00': # Strings are terminated with single byte 00.
+            if encoding is not None:
+                return byte_string.decode(encoding)
+            else:
+                return byte_string
+        byte_string += bytes
+
+
 def main():
+    """When run as a script, encode strings to binary Shift_JIS-2004
+    using the default linebreak arguments."""
 
     while True:
         input_str = input("String (Input blank string to exit): ")
