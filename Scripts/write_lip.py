@@ -62,7 +62,7 @@ def main():
                         # Check if entire line consists of non-Japanese characters and assume line was altered.
                         if re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*()_|+\-×÷=?;:<>°\'",.<>\[\]/—–‘’“”☆★ ]+',i[2],re.I):
                             
-                            line_encoded = ascii_to_sjis(i[2],line_id=i[1])
+                            line_encoded = ascii_to_sjis(i[2],line_id=i[1],filename=translate_file)
 
                             # The lip movement commands are a sequence of numbers 1-7. Digit 7 writes
                             # characters to screen after a digit 1-6.

@@ -167,7 +167,17 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     i = 0
     while i < len(input_str):
         if input_str[i] != "{":
-            output += struct.pack(">H",table[input_str[i]] + offset)
+            try:
+                output += struct.pack(">H",table[input_str[i]] + offset)
+            # Exit if a script file contains a character not in table, continue if run from command line.
+            except KeyError as e:
+                if kwargs.get("filename") is not None:
+                    print(f"Error reading {kwargs['filename']} at line ID {kwargs['line_id']}: Invalid character {e}.")
+                    exit()
+                else:
+                    print(f"Error: Invalid character {e}.")
+                    return b''
+
         else:
             # If { is encountered, parse as a control code and paste characters directly rather than translating them.
             while input_str[i+1] != "}": # Check next character and stop pasting when } is next.
@@ -274,7 +284,7 @@ def main():
 
     while True:
         input_str = input("String (Input blank string to exit): ")
-        if input_str != "":
+        if input_str != "" :
             print(ascii_to_sjis(input_str).hex(),"\n")
         else:
             break
