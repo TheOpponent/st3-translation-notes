@@ -37,7 +37,7 @@ def main():
                     offset = 8
                     file_type = "sbn"
                 else:
-                    print(f"{repr(sbx_file)}: Not uncompressed SBX or SBN file.")
+                    print(f"{repr(sbx_file.name)}: Not uncompressed SBX or SBN file.")
                     continue
 
                 # Set address and limits.
