@@ -49,6 +49,11 @@ def compress(input_file):
         input_data = file.read()
         signature = input_data[0:4]
         raw_length = len(input_data)
+
+        # SBX files have signature BA AF 55 CC. Rewrite it to ASCR.
+        if signature == b'\xBA\xAF\x55\xCC':
+            signature = b'ASCR'
+
         if signature == b'ASCR':
             compressed_data = bytearray(Prs.Compress(input_data))
         elif signature == b'BPV1':
