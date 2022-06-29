@@ -154,11 +154,14 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     '{': None, # Ignore curly brackets as they are used for control codes.
     '}': None}
 
+    warnings = 0
+
     if break_lines:
-        input_str = linebreak(input_str,line_id=kwargs.get("line_id",None),
+        input_str, _, warnings = linebreak(input_str,line_id=kwargs.get("line_id",None),
+                              filename=kwargs.get("filename",None),
                               length_limit=kwargs.get("length_limit",37),
                               last_row_length_limit=kwargs.get("last_row_length_limit",37),
-                              row_limit=kwargs.get("row_limit",3))[0]
+                              row_limit=kwargs.get("row_limit",3))
 
     input_str = input_str.strip()
     
@@ -176,7 +179,7 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
                     exit()
                 else:
                     print(f"Error: Invalid character {e}.")
-                    return b''
+                    return (b'',1)
 
         else:
             # If { is encountered, parse as a control code and paste characters directly rather than translating them.
@@ -189,11 +192,12 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
 
     output += b'\x00' # Terminate string.
 
-    return output
+    return (output,warnings)
 
 
-def linebreak(input_str,line_id=None,length_limit=37,last_row_length_limit=37,row_limit=3):
-    """Break lines according to length_limit. Default length is 37.
+def linebreak(input_str,filename=None,line_id=None,length_limit=37,last_row_length_limit=37,row_limit=3):
+    """Break lines into rows according to length_limit. 
+    Default length is 37.
     A backslash character is inserted at line breaks, 
     which is translated in ascii_to_sjis to byte 2F2F.
     
@@ -202,13 +206,14 @@ def linebreak(input_str,line_id=None,length_limit=37,last_row_length_limit=37,ro
     commas, and @. Because of the need for non-printable control 
     codes, the standard text wrapping functions cannot be used.
     
-    Returns a tuple containing the output string and the number of 
-    lines.
+    Returns a tuple containing the output string, the number of 
+    rows, and the number of warnings generated.
     """
     
     output = ""
     current_length = 0
-    lines = 1
+    rows = 1
+    warnings = 0
 
     # Split input string into an enumerated list of each word. Forced line breaks are split into their own word.
     input_str = list(enumerate(input_str.replace(r"\n"," \\ ").replace("//"," \\ ").split(" "),1))
@@ -223,7 +228,7 @@ def linebreak(input_str,line_id=None,length_limit=37,last_row_length_limit=37,ro
                 current_length += word_length + 1
             else:
                 output = output.rstrip() + "\\" + i[1]
-                lines += 1
+                rows += 1
                 current_length = word_length
             # Add a space if there are more words remaining, or break otherwise.
             if i[0] < len(input_str):
@@ -232,22 +237,24 @@ def linebreak(input_str,line_id=None,length_limit=37,last_row_length_limit=37,ro
                 break
         else:
             output = output.rstrip() + "\\" # Remove space inserted by previous word.
-            lines += 1
+            rows += 1
             current_length = 0
 
-    if lines == row_limit and current_length > last_row_length_limit:
-        if line_id is not None:
-            print(f"WARNING: Last row limit overflow at line {line_id}: {output}")
+    if rows == row_limit and current_length > last_row_length_limit:
+        if filename is not None and line_id is not None:
+            print(f"WARNING: Last row limit overflow in {filename} at line {line_id}: {output}")
         else:
             print(f"WARNING: Last row limit overflow: {output}")
+        warnings += 1
 
-    if lines > row_limit:
+    if rows > row_limit:
         if line_id is not None:
             print(f"WARNING: Line break overflow at line {line_id}: {output}")
         else:
             print(f"WARNING: Line break overflow: {output}")
+        warnings += 1
 
-    return (output,lines)
+    return (output,rows,warnings)
 
 
 def swap_bytes(value):

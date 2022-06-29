@@ -19,6 +19,9 @@ output_path = os.path.join(path,"output")
 
 def main():
 
+    files = 0
+    warnings = 0
+
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -61,7 +64,9 @@ def main():
                     for i in csv_file:
                         if i[1] != "code" and re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*(){}_|+\-×÷=?;:<>°\'",.\[\]/—–‘’“”☆★ ]+',i[2],re.I):
                             # Only translate strings that are not type "code" and contain only non-Japanese characters.
-                            line_encoded = ascii_to_sjis(i[2],line_id=i[0],filename=translate_file)
+                            # ascii_to_sjis will pass warning counts, which will be reported at the end of this script's execution.
+                            line_encoded, warning = ascii_to_sjis(i[2],line_id=i[0],filename=translate_file)
+                            warnings += warning
                         else:
                             # Otherwise, assume string is unchanged Japanese text or a subroutine name and encode as-is.
                             line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
@@ -98,9 +103,17 @@ def main():
                     file.write(output_header + output_binary + output_footer)
                     print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written. PRS data: {swap_bytes(len(output_binary))}")
 
+                files += 1
+
         else:
             print(f"{translate_file}: No matching uncompressed SBX or SBN file found.")
             continue
+
+    if files > 0:
+        print(f"\n{str(files)} files written to {output_path}.")
+
+        if warnings > 0:
+            print(f"{str(warnings)} warnings raised. See output for details.")
 
 
 if __name__ == "__main__":

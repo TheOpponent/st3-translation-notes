@@ -19,6 +19,9 @@ DELAY = 1
 
 def main():
 
+    files = 0
+    warnings = 0
+
     # Only process CSV files for which a LIP file with the same base name exists.
     for translate_file in os.listdir(translate_path):
         translate_base_name = os.path.splitext(translate_file)[0]
@@ -27,7 +30,7 @@ def main():
 
                 # Check signature.
                 if lip_file.read(4) != b'ALPD':
-                    print(f"{lip_file}: Not LIP file.")
+                    # print(f"{lip_file.name}: Not LIP file.")
                     continue
 
                 # Set address and limits.
@@ -62,7 +65,8 @@ def main():
                         # Check if entire line consists of non-Japanese characters and assume line was altered.
                         if re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*()_|+\-×÷=?;:<>°\'",.<>\[\]/—–‘’“”☆★ ]+',i[2],re.I):
                             
-                            line_encoded = ascii_to_sjis(i[2],line_id=i[1],filename=translate_file)
+                            line_encoded, warning = ascii_to_sjis(i[2],line_id=i[1],filename=translate_file)
+                            warnings += warning
 
                             # The lip movement commands are a sequence of numbers 1-7. Digit 7 writes
                             # characters to screen after a digit 1-6.
@@ -126,6 +130,14 @@ def main():
             with open(os.path.join(output_path,translate_base_name),"wb") as output_file:
                 output_file.write(output_binary)
                 print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written.")
+
+            files += 1
+
+    if files > 0:
+        print(f"\n{str(files)} files written to {output_path}.")
+
+        if warnings > 0:
+            print(f"{str(warnings)} warnings raised. See output for details.")
 
 
 if __name__ == "__main__":
