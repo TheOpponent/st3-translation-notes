@@ -1,4 +1,5 @@
-# This script reads a CSV file in the translate subdirectory and inserts the strings within into a LIPSYNC*.LIP with a corresponding filename in the source subdirectory.
+# This script reads a CSV file in the translate subdirectory and inserts the strings within 
+# into a LIPSYNC*.LIP with a corresponding filename in the source subdirectory.
 # It outputs files in the 'output' subdirectory with extension .LIP.
 
 import csv
@@ -64,7 +65,7 @@ def main():
 
                         # Check if entire line consists of non-Japanese characters and assume line was altered.
                         if re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*()_|+\-×÷=?;:<>°\'",.<>\[\]/—–‘’“”☆★ ]+',i[2],re.I):
-                            
+
                             line_encoded, warning = ascii_to_sjis(i[2],line_id=i[1],filename=translate_file)
                             warnings += warning
 
@@ -97,7 +98,7 @@ def main():
 
                         # Otherwise, assume string is unchanged Japanese text and encode string and lip command sequence as-is.
                         else:
-                            
+
                             line_encoded = i[2].encode(encoding="shift_jis_2004") + b'\x00'
                             cmd_sequence = i[4]
 
@@ -134,10 +135,10 @@ def main():
             files += 1
 
     if files > 0:
-        print(f"\n{str(files)} files written to {output_path}.")
+        print(f"\n{str(files)} file(s) written to {output_path}.")
 
         if warnings > 0:
-            print(f"{str(warnings)} warnings raised. See output for details.")
+            print(f"{str(warnings)} warning(s) raised. See output for details.")
 
 
 if __name__ == "__main__":

@@ -6,15 +6,23 @@
 import os
 import sys
 import struct
+from shutil import copyfile
 from utils.utils import read_string
 
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
 source_path = os.path.join(path,"source")
 translate_path = os.path.join(path, "translate")
+backups_path = os.path.join(path,"backups")
 
 def main():
+
+    files_written = 0
+    backup_files_written = 0
+
     if not os.path.exists(translate_path):
         os.makedirs(translate_path)
+    if not os.path.exists(backups_path):
+        os.makedirs(backups_path)
 
     for file in os.listdir(source_path):
         if file.lower().endswith(('.lip')):
@@ -52,7 +60,20 @@ def main():
                     for i in table_data:
                         output_file.write("|".join([str(i[0]),hex(i[1]),i[2],hex(i[3]),i[4]]) + "\n")
 
+                files_written += 1
+
+                # Create backup copies of the script CSV files, but do not overwrite existing copies.
+                if not os.path.exists(os.path.join(backups_path, file + ".csv")):
+                    copyfile(os.path.join(translate_path, file + ".csv"),os.path.join(backups_path, file + ".csv"))
+                    backup_files_written += 1
+
             print(f"{file}: Data area length: {file_size}. Entries: {table_length}.")
+
+    if files_written > 0:
+        print(f"\n{files_written} CSV file(s) written to {translate_path}.")
+
+    if backup_files_written > 0:
+        print(f"\n{files_written} CSV file(s) written to {backups_path}.")
 
 
 if __name__ == "__main__":

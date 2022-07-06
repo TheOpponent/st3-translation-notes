@@ -3,3 +3,4 @@ output/
 source/
 translate/
 __pycache__/
+.venv/

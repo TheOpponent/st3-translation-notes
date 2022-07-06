@@ -9,43 +9,52 @@ import os
 import re
 import struct
 import sys
-
-from utils.utils import ascii_to_sjis, swap_bytes
+from utils import prs
+from utils.utils import ascii_to_sjis
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path,"translate")
 sbx_path = os.path.join(path,"source")
-output_path = os.path.join(path,"output")
+output_path = os.path.join(path,"output2")
 
 def main():
 
-    files = 0
+    files_written = 0
     warnings = 0
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
+    if len(sys.argv) > 1:
+        file_list = []
+        for i in sys.argv[1:]:
+            file_list.append((i + ".csv" if not i.endswith(".csv") else i))
+
+    else:
+        file_list = os.listdir(translate_path)
+
     # Only process CSV files for which a SBX with the same base name exists.
-    for translate_file in os.listdir(translate_path):
+    for translate_file in file_list:
         translate_base_name = os.path.splitext(translate_file)[0]
-        if os.path.splitext(translate_file)[1] == ".csv" and os.path.isfile(sbx_source := os.path.join(sbx_path,translate_base_name)):
+        if os.path.splitext(translate_file)[1] == ".csv" and os.path.exists(sbx_source := os.path.join(sbx_path,translate_base_name)):
+
+            # If source is SBX, change sbx_source to SBXU file.
+            if sbx_source.lower().endswith(".sbx"):
+                sbx_source = os.path.splitext(sbx_source)[0] + ".SBXU"
+
             with open(sbx_source,"rb") as sbx_file:
 
-                # Check signature. If the first 4 bytes or first 4 bytes after an 8-byte header contain a valid BA AF 55 CC signature, set the offset accordingly.
-                header = sbx_file.read(12)
-                if header[0:4] == b'\xBA\xAF\x55\xCC':
-                    offset = 0
-                    file_type = "sbx"
-                elif header[0:4] == b'ASCR' and header[8:12] == b'\xBA\xAF\x55\xCC':
-                    offset = 8
-                    file_type = "sbn"
+                # Check signature and set file_type.
+                header = sbx_file.read(16)
+                if header[0:4] == b'ASCR' and header[8:12] == b'\xBA\xAF\x55\xCC':
+                    file_type = os.path.splitext(sbx_source)[1]
                 else:
-                    print(f"{repr(sbx_file.name)}: Not uncompressed SBX or SBN file.")
+                    print(f"Not SBX or SBN file: {repr(sbx_file.name)}")
                     continue
 
                 # Set address and limits.
-                sbx_file.seek(offset + 4)
-                offset_table_address = struct.unpack("<I",sbx_file.read(4))[0] + offset
+                sbx_file.seek(12)
+                offset_table_address = struct.unpack("<I",sbx_file.read(4))[0] + 8
                 # line_count = struct.unpack("<I",sbx_file.read(4))[0]
 
                 # The first string is empty, which will cause the second offset to be 1 greater than the first.
@@ -82,38 +91,36 @@ def main():
                 output_binary = bytearray()
 
                 # Copy data preceding offset table location.
-                sbx_file.seek(offset)
-                output_binary = sbx_file.read(offset_table_address - offset) + new_offsets + new_strings
+                sbx_file.seek(8)
+                output_binary = sbx_file.read(offset_table_address - 8) + new_offsets + new_strings
 
                 while True:
                     output_binary += b'\x40'
                     if len(output_binary) % 4 == 0:
                         break
 
-                if file_type == "sbn":
-                    # SBN files require a header containing the data area size and the EOFC footer.
-                    output_header = b'ASCR' + struct.pack("<I", len(output_binary))
-                    output_footer = b'EOFC\x00\x00\x00\x00'
-                else:
-                    # SBX files will be compressed later and have that information added after PRS compression.
+                # Recompress SBXU files.
+                if file_type.lower() == ".sbxu":
                     output_header = b''
-                    output_footer = b''
+                    output_binary = prs.compress(b'ASCR' + struct.pack("<I", len(output_binary)) + output_binary)
+                else:
+                    output_header = b'ASCR' + struct.pack("<I", len(output_binary))
 
-                with open(os.path.join(output_path,translate_base_name + ".out"),"wb") as file:
-                    file.write(output_header + output_binary + output_footer)
-                    print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written. PRS data: {swap_bytes(len(output_binary))}")
+                with open(os.path.join(output_path,translate_base_name),"wb") as file:
+                    file.write(output_header + output_binary + b'EOFC\x00\x00\x00\x00')
+                    print(f"{translate_base_name}: {len(output_binary)} ({hex(len(output_binary))}) bytes written.")
 
-                files += 1
+                files_written += 1
 
         else:
-            print(f"{translate_file}: No matching uncompressed SBX or SBN file found.")
+            print(f"{translate_file}: No matching SBXU or SBN file found.")
             continue
 
-    if files > 0:
-        print(f"\n{str(files)} files written to {output_path}.")
+    if files_written > 0:
+        print(f"\n{str(files_written)} file(s) written to {output_path}.")
 
         if warnings > 0:
-            print(f"{str(warnings)} warnings raised. See output for details.")
+            print(f"{str(warnings)} warning(s) raised. See output for details.")
 
 
 if __name__ == "__main__":

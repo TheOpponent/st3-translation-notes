@@ -72,6 +72,7 @@ def decompress(input_data):
     extra wrapping added.
     
     Returns a bytes object."""
+    
     signature = input_data[0:4]
     # Read bytes as little-endian, unsigned integers.
     padded_length = struct.unpack("<I",input_data[4:8])[0] # Compressed data size and header. This value represents all of the compressed data ending with the 'CPRS' signature and the preceding and following 00 bytes.
