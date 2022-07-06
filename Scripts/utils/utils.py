@@ -277,6 +277,8 @@ def read_string(file,encoding="shift_jis_2004"):
     byte_string = bytearray()
     while True:
         bytes = file.read(1)
+        if bytes == b'':
+            raise ValueError("Unable to read bytes.")
         if bytes == b'\x00': # Strings are terminated with single byte 00.
             if encoding is not None:
                 return byte_string.decode(encoding)
