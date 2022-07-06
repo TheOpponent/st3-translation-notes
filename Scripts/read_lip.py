@@ -72,6 +72,9 @@ def main():
     if files_written > 0:
         print(f"\n{files_written} CSV file(s) written to {translate_path}.")
 
+    else:
+        print(f"No LIP files found in {source_path}.")
+
     if backup_files_written > 0:
         print(f"\n{files_written} CSV file(s) written to {backups_path}.")
 

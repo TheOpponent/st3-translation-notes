@@ -143,15 +143,16 @@ def main():
 
     if files_written1 > 0:
         print(f"\n{files_written1} CSV file(s) written to {translate_path}.")
+    
+    else:
+        print(f"No SBX or SBN files found in {source_path}.")
+        return
 
     if backup_files_written > 0:
         print(f"\n{files_written1} CSV file(s) written to {backups_path}.")
 
     if files_written2 > 0:
         print(f"{files_written2} CSV file(s) written to {subroutines_path}.")
-
-    else:
-        print(f"No SBX or SBN files found in {source_path}.")
 
 
 if __name__ == "__main__":
