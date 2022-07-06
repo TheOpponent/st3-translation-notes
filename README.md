@@ -5,3 +5,8 @@ The code in the Scripts directory is in the public domain, with the exception of
 Scripts that make use of PRS compression currently use the [prs.net](https://github.com/FraGag/prs.net) library.
 
 Files in the External subdirectory are retained from external sources and kept for the sake of preservation and reference.
+
+# Instructions
+Clone this repository, and install [NumPy](https://pypi.org/project/numpy/), [Pillow](https://python-pillow.org), and [pythonnet](https://github.com/pythonnet/pythonnet).
+
+Follow the instructions in the [wiki](https://github.com/TheOpponent/st3-translation-notes/wiki) for getting started with the translation process.
