@@ -38,7 +38,12 @@ def main():
     if not os.path.exists(backups_path):
         os.makedirs(backups_path)
 
-    for file in os.listdir(source_path):
+    for file in [i for i in os.listdir(source_path) if i.lower().endswith(('.sbx','.sbn'))]:
+        
+        # If a CSV for the file already exists, do not process.
+        if os.path.exists(os.path.join(translate_path, file + ".csv")):
+            print(f"{os.path.join(translate_path, file + '.csv')} already exists; not overwriting.")
+            continue
 
         with open(os.path.join(source_path,file),"rb") as f:
 
@@ -146,7 +151,7 @@ def main():
         print(f"\n{files_written1} CSV file(s) written to {translate_path}.")
     
     else:
-        print(f"No SBX or SBN files found in {source_path}.")
+        print(f"No files written.")
         return
 
     if backup_files_written > 0:

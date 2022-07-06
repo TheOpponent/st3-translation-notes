@@ -25,56 +25,61 @@ def main():
     if not os.path.exists(backups_path):
         os.makedirs(backups_path)
 
-    for file in os.listdir(source_path):
-        if file.lower().endswith(('.lip')):
-            # Read files in working directory. If first 4 bytes does not contain signature ALPD, skip the file.
-            with open(os.path.join(source_path,file),"rb") as f:
-                if f.read(4) != b'ALPD':
-                    return
+    for file in [i for i in os.listdir(source_path) if i.lower().endswith(('.lip'))]:
 
-                file_size = struct.unpack("<I",f.read(4))[0]     # Size of this file 0x08 to end of data area.
-                table_length = struct.unpack("<I",f.read(4))[0]  # Number of lines. Multiply by 12 and add 8 for first offset. 
+        # If a CSV for the file already exists, do not process.
+        if os.path.exists(os.path.join(translate_path, file + ".csv")):
+            print(f"{os.path.join(translate_path, file + '.csv')} already exists; not overwriting.")
+            continue
 
-                # Read the offset table and load the data into a list.
-                # Offsets in the table are 8 bytes before actual data. The output CSV does not include this adjustment.
-                table_data = []
-                for i in range(table_length):
-                    f.seek((i + 1) * 12)
-                    voice_index = struct.unpack("<I",f.read(4))[0]
-                    text_location = struct.unpack("<I",f.read(4))[0]
-                    cmd_location = struct.unpack("<I",f.read(4))[0]
+        # Read files in working directory. If first 4 bytes does not contain signature ALPD, skip the file.
+        with open(os.path.join(source_path,file),"rb") as f:
+            if f.read(4) != b'ALPD':
+                return
 
-                    text = ""
-                    cmd = ""
+            file_size = struct.unpack("<I",f.read(4))[0]     # Size of this file 0x08 to end of data area.
+            table_length = struct.unpack("<I",f.read(4))[0]  # Number of lines. Multiply by 12 and add 8 for first offset. 
 
-                    # Read dialogue string.
-                    f.seek(text_location + 8)
-                    text = read_string(f)
+            # Read the offset table and load the data into a list.
+            # Offsets in the table are 8 bytes before actual data. The output CSV does not include this adjustment.
+            table_data = []
+            for i in range(table_length):
+                f.seek((i + 1) * 12)
+                voice_index = struct.unpack("<I",f.read(4))[0]
+                text_location = struct.unpack("<I",f.read(4))[0]
+                cmd_location = struct.unpack("<I",f.read(4))[0]
 
-                    # Read command sequence.
-                    f.seek(cmd_location + 8)
-                    cmd = read_string(f,encoding=None).hex()
+                text = ""
+                cmd = ""
 
-                    table_data.append([voice_index,text_location,text,cmd_location,cmd])
+                # Read dialogue string.
+                f.seek(text_location + 8)
+                text = read_string(f)
 
-                with open(os.path.join(translate_path, file + ".csv"),"w", encoding="utf-8") as output_file:
-                    for i in table_data:
-                        output_file.write("|".join([str(i[0]),hex(i[1]),i[2],hex(i[3]),i[4]]) + "\n")
+                # Read command sequence.
+                f.seek(cmd_location + 8)
+                cmd = read_string(f,encoding=None).hex()
 
-                files_written += 1
+                table_data.append([voice_index,text_location,text,cmd_location,cmd])
 
-                # Create backup copies of the script CSV files, but do not overwrite existing copies.
-                if not os.path.exists(os.path.join(backups_path, file + ".csv")):
-                    copyfile(os.path.join(translate_path, file + ".csv"),os.path.join(backups_path, file + ".csv"))
-                    backup_files_written += 1
+            with open(os.path.join(translate_path, file + ".csv"),"w", encoding="utf-8") as output_file:
+                for i in table_data:
+                    output_file.write("|".join([str(i[0]),hex(i[1]),i[2],hex(i[3]),i[4]]) + "\n")
 
-            print(f"{file}: Data area length: {file_size}. Entries: {table_length}.")
+            files_written += 1
+
+            # Create backup copies of the script CSV files, but do not overwrite existing copies.
+            if not os.path.exists(os.path.join(backups_path, file + ".csv")):
+                copyfile(os.path.join(translate_path, file + ".csv"),os.path.join(backups_path, file + ".csv"))
+                backup_files_written += 1
+
+        print(f"{file}: Data area length: {file_size}. Entries: {table_length}.")
 
     if files_written > 0:
-        print(f"\n{files_written} CSV file(s) written to {translate_path}.")
+            print(f"\n{files_written} CSV file(s) written to {translate_path}.")
 
     else:
-        print(f"No LIP files found in {source_path}.")
+        print(f"No files written.")
 
     if backup_files_written > 0:
         print(f"\n{files_written} CSV file(s) written to {backups_path}.")
