@@ -1,10 +1,11 @@
 # Based on the scripts from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695 by ZetpeR xax007@yandex.ru.
 #
 # This script reads compressed SBX files and uncompressed SBN files in the 'source' subdirectory.
-# It outputs CSV files in the 'translate'and `subroutine` subdirectories, using pipe characters | as delimiters.
+# Decompressed SBX files are saved in the 'source' subdirectory with a SBXU extension.
+# It outputs CSV files in the 'translate' and 'subroutine' subdirectories, using pipe characters | as delimiters.
 #
 # Two CSV values are written for each file, one for the strings and one for the subroutine binary data.
-# Rows for the strings contain: string offset, string type ("code" or "dialogue"), Shift-JIS text.
+# Rows for the strings contain: string offset, string type ("code" or "dialogue"), text converted to UTF-8.
 # Rows for subroutine data contain: four data values, data offset, subroutine name from strings, bytes.
 
 import os
@@ -64,10 +65,10 @@ def main():
                 print("Header not recognized:",file)
                 continue
 
-            string_location = struct.unpack("<I",input_data.read(4))[0] + 8   # Location of table of offsets for text area at the end of the file.
-            string_length = struct.unpack("<I",input_data.read(4))[0]         # Number of strings in this file.
-            subroutines_location = struct.unpack("<I",input_data.read(4))[0] + 8   # Location of table of offsets for binary data associated with subroutines.
-            subroutines_length = struct.unpack("<I",input_data.read(4))[0]         # Number of entries in the binary data table.
+            string_location = struct.unpack("<I",input_data.read(4))[0] + 8       # Location of table of offsets for text area at the end of the file.
+            string_length = struct.unpack("<I",input_data.read(4))[0]             # Number of strings in this file.
+            subroutines_location = struct.unpack("<I",input_data.read(4))[0] + 8  # Location of table of offsets for binary data associated with subroutines.
+            subroutines_length = struct.unpack("<I",input_data.read(4))[0]        # Number of entries in the binary data table.
             
             # The last set of strings are subroutines that correspond to the number of entries in the binary data table. 
             # Strings will be copied into this list and referenced during the writing of the binary data table CSV.

@@ -1,5 +1,6 @@
 # This script reads LIP files in the 'source' subdirectory.
 # It outputs CSV files in the 'translate' subdirectory using pipe characters | as delimiters.
+#
 # Each row contains: the voice index, dialogue offset address in hex, dialogue text converted to UTF-8, 
 # lip movement command sequence address in hex, and raw bytes of command sequence separated by spaces.
 

@@ -1,5 +1,6 @@
 # This script reads the OpOption.bin file, located within the archive SYSLIST.AFS, in the 'source' subdirectory.
 # It outputs a CSV file in the 'translate' subdirectory using pipe characters | as delimiters. 
+#
 # Each row contains: string offset, string. The strings begin with a list of parameters in ASCII:
 # !i!h=nnn!v=nnn!xnnn!y=nnn
 # This is followed by the string in Shift-JIS, then !d!o, then byte 00.

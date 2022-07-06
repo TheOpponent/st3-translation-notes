@@ -1,8 +1,10 @@
-# This script reads a CSV file in the translate subdirectory and inserts the strings within into an uncompressed SBX or SBN script 
-# with a corresponding filename with extension .SBX.bin or .SBN in the source subdirectory.
-# It outputs files in the 'output' subdirectory with the corresponding extension. Pass SBX output files to a PRS compressor.
+# This script reads a CSV file in the translate subdirectory and inserts the strings 
+# within into an SBXU or SBN file with a corresponding filename in the source subdirectory.
+# It outputs files in the 'output' subdirectory with the corresponding extension.
 # This assumes all string offsets are contiguous.
-# The first line in a script extraction contains a blank string. The offset of this line is used as the starting point.
+#
+# The first line in a CSV file contains a blank string. 
+# The offset of this line is used as the starting point.
 
 import csv
 import os
@@ -15,7 +17,7 @@ from utils.utils import ascii_to_sjis
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path,"translate")
 sbx_path = os.path.join(path,"source")
-output_path = os.path.join(path,"output2")
+output_path = os.path.join(path,"output")
 
 def main():
 
