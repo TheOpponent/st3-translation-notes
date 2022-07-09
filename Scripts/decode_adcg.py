@@ -78,7 +78,7 @@ def weave_adcg(input_data):
                 output_file.write(output)
 
             # Convert PVR texture to PNG.
-            pvr_convert = subprocess.run([pvr2png_path,"~temp.pvr","~temp.png",pvr2png_args],shell=True)
+            pvr_convert = subprocess.run([pvr2png_path,"~temp.pvr","~temp.png"] + pvr2png_args,shell=True)
             pvr_convert.check_returncode()
 
             # Load converted texture into an Image object.
