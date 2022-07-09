@@ -3,10 +3,18 @@
 # Note that the output files may contain invalid PVR format information, and some fields are currently unknown.
 
 import mmap
+import os
 import struct
+import subprocess
 import sys
 from collections import namedtuple
 
+path = os.path.realpath(os.path.dirname(sys.argv[0]))
+
+# Set these to the path and arguments of a utility that accepts a PVR file and outputs a PNG file.
+# It is recommended that the arguments include a switch that suppresses console output, if available.
+pvr2png_path = os.path.join(path,os.path.normpath(r".\lib\pvr2png.exe"))
+pvr2png_args = ["-q"]
 
 def extract_bpv1(bpv1_file):
 
@@ -73,6 +81,10 @@ def extract_bpv1(bpv1_file):
                             print(f"{output_file.name}: Wrote {len(output)} bytes. PVR format: {hex(data.format[0])}, {hex(data.format[1])}. Dimensions: {data.width} x {data.height}.")
                             textures_written += 1
 
+                        # Convert PVR texture to PNG.
+                        pvr_convert = subprocess.run([pvr2png_path,bpv1_file + filename + ".pvr",bpv1_file + filename + ".png"] + pvr2png_args,shell=True)
+                        pvr_convert.check_returncode()
+
                 else:
                     print(f"Extracted {textures_written} textures.")
                     break
@@ -85,6 +97,7 @@ def main():
             extract_bpv1(i)
     else:
         print("Specify input file(s) containing BPV1 data.")
+
 
 if __name__ == "__main__":
     main()

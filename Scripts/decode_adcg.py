@@ -22,7 +22,7 @@ path = os.path.realpath(os.path.dirname(sys.argv[0]))
 # Set these to the path and arguments of a utility that accepts a PVR file and output a PNG file.
 # It is recommended that the arguments include a switch that suppresses console output, if available.
 pvr2png_path = os.path.join(path,os.path.normpath(r".\lib\pvr2png.exe"))
-pvr2png_args = [pvr2png_path,"~temp.pvr","~temp.png","-q"]
+pvr2png_args = ["-q"]
 
 def weave_adcg(input_data):
     """Extracts the PVR subtextures from an uncompressed ADCG chunk,
@@ -78,7 +78,7 @@ def weave_adcg(input_data):
                 output_file.write(output)
 
             # Convert PVR texture to PNG.
-            pvr_convert = subprocess.run(pvr2png_args,shell=True)
+            pvr_convert = subprocess.run([pvr2png_path,"~temp.pvr","~temp.png",pvr2png_args],shell=True)
             pvr_convert.check_returncode()
 
             # Load converted texture into an Image object.
