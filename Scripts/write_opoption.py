@@ -6,7 +6,7 @@ import os
 import sys
 import csv
 import struct
-from utils import ascii_to_sjis
+from utils.utils import ascii_to_sjis
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 source_path = os.path.join(path,"source")
@@ -51,7 +51,7 @@ def main():
                         original_offsets.append(int(i[0],0))
 
                         # Encode current string from csv.
-                        line_encoded = ascii_to_sjis(i[1],break_lines=False)
+                        line_encoded = ascii_to_sjis(i[1],break_lines=False)[0]
 
                         new_strings += line_encoded
                         new_offsets.append(current_offset)

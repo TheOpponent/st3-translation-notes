@@ -8,11 +8,13 @@
 import os
 import sys
 import re
+from shutil import copyfile
 from utils.utils import read_string
 
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
 source_path = os.path.join(path,"source")
 translate_path = os.path.join(path, "translate")
+backups_path = os.path.join(path,"backups")
 
 def main():
     if not os.path.exists(translate_path):
@@ -44,6 +46,9 @@ def main():
             with open(os.path.join(translate_path, "OpOption.bin.csv"),"w", encoding="utf-8") as txt_output:
                 for i in table_data:
                     txt_output.write("|".join([i[0],i[1]]) + "\n")
+
+            if not os.path.exists(os.path.join(backups_path, "OpOption.bin.csv")):
+                copyfile(os.path.join(translate_path, "OpOption.bin.csv"),os.path.join(backups_path, "OpOption.bin.csv"))
 
         print(f"OpOption.bin: Entries: {len(table_data)}.")
 
