@@ -1,6 +1,7 @@
-# This script reads OpOption.bin.csv translate subdirectory and merges the new strings into OpOption.bin in the source directory.
+# This script reads OpOption.bin.csv, OpOptionSave.bin.csv, and OpSelectVm.bin.csv in the translate subdirectory 
+# and merges the new strings into the respective files in the source directory.
 # It assumes all strings are fully ASCII.
-# Output is written into OpOption.bin in the output directory.
+# Output is written into the output directory.
 
 import os
 import sys
@@ -18,74 +19,81 @@ def main():
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    try:
-        with open(os.path.join(source_path,"OpOption.bin"),"rb") as bin_file:
+    # List containing: file name, location of offset table, number of bytes between offset table and string table, number of indexes.
+    op_files = [
+        ["OpOption.bin",0x23b0,133,51],
+        ["OpOptionSave.bin",0x5c4c,155,133],
+        ["OpSelectVm.bin",0x7b30,299,11]
+    ]
 
-            try:
-                with open(os.path.join(translate_path, "OpOption.bin.csv"), encoding="utf-8") as file:
-                    csv_file = csv.reader(file,delimiter="|")
+    for filename,offset_table,other_bytes,index_count in op_files:
+        try:
+            with open(os.path.join(source_path,filename),"rb") as bin_file:
+                try:
+                    with open(os.path.join(translate_path, filename + ".csv"), encoding="utf-8") as file:
+                        csv_file = csv.reader(file,delimiter="|")
 
-                    new_offsets = bytearray()
-                    new_strings = bytearray()
+                        new_offsets = bytearray()
+                        new_strings = bytearray()
 
-                    # First index and offset is at 0x23B0.
-                    bin_file.seek(9136)
+                        # Seek to irst index and offset.
+                        bin_file.seek(offset_table)
 
-                    # Create a dict of indexes and offsets. There are 51 indexes and 40 unique offsets,
-                    # and all instances of a given offset must be changed to the same value.
-                    indexes = []
-                    offsets = []
-                    for i in range(51):
-                        indexes.append(struct.unpack("<I",bin_file.read(4))[0])
-                        offsets.append(struct.unpack("<I",bin_file.read(4))[0])
+                        # Create a dict of indexes and offsets. There may be more indexes than unique offsets,
+                        # and all instances of a given offset must be changed to the same value.
+                        indexes = []
+                        offsets = []
+                        for i in range(index_count):
+                            indexes.append(struct.unpack("<I",bin_file.read(4))[0])
+                            offsets.append(struct.unpack("<I",bin_file.read(4))[0])
 
-                    old_data = {k:v for (k,v) in zip(indexes,offsets)}
+                        old_data = {k:v for (k,v) in zip(indexes,offsets)}
 
-                    # Updated offsets will replace original offsets in the offset table.
-                    original_offsets = []
-                    new_offsets = []
-                    current_offset = offsets[0]
-                    for i in csv_file:
+                        # Updated offsets will replace original offsets in the offset table.
+                        original_offsets = []
+                        new_offsets = []
+                        current_offset = offsets[0]
+                        for i in csv_file:
 
-                        # Get original offsets.
-                        original_offsets.append(int(i[0],0))
+                            # Get original offsets.
+                            original_offsets.append(int(i[0],0))
 
-                        # Encode current string from csv.
-                        line_encoded = ascii_to_sjis(i[1],break_lines=False)[0]
+                            # Encode current string from csv.
+                            line_encoded = ascii_to_sjis(i[1],break_lines=False)[0]
 
-                        new_strings += line_encoded
-                        new_offsets.append(current_offset)
+                            new_strings += line_encoded
+                            new_offsets.append(current_offset)
 
-                        # Increase next offset by the length of the string in bytes.
-                        current_offset += len(line_encoded)
+                            # Increase next offset by the length of the string in bytes.
+                            current_offset += len(line_encoded)
 
-                # Replace original offsets with recalculated offsets.
-                recalc_data = {k:v for (k,v) in zip(original_offsets,new_offsets)}
-                new_data = {k:recalc_data.get(v,v) for (k,v) in old_data.items()}
+                    # Replace original offsets with recalculated offsets.
+                    recalc_data = {k:v for (k,v) in zip(original_offsets,new_offsets)}
+                    new_data = {k:recalc_data.get(v,v) for (k,v) in old_data.items()}
 
-                # Encode finalized index and offset pairs.
-                final_data = bytearray()
-                for (index,offset) in new_data.items():
-                    final_data += struct.pack("<I",index)
-                    final_data += struct.pack("<I",offset)
+                    # Encode finalized index and offset pairs.
+                    final_data = bytearray()
+                    for (index,offset) in new_data.items():
+                        final_data += struct.pack("<I",index)
+                        final_data += struct.pack("<I",offset)
 
-                # Write file, copying parts of the original file that will not be edited.                
-                bin_file.seek(0)
-                output_binary = bin_file.read(9136)
-                output_binary += final_data
-                bin_file.seek(9544)
-                output_binary += bin_file.read(133)
-                output_binary += new_strings
+                    # Write file, copying parts of the original file that will not be edited.                
+                    bin_file.seek(0)
+                    output_binary = bin_file.read(offset_table)
+                    output_binary += final_data
+                    bin_file.seek(offset_table + len(final_data))
+                    output_binary += bin_file.read(other_bytes)
+                    output_binary += new_strings
 
-                with open(os.path.join(output_path,"OpOption.bin"),"wb") as file:
-                    file.write(output_binary)
-                    print(f"OpOption.bin: {len(output_binary)} ({hex(len(output_binary))}) bytes written.")
+                    with open(os.path.join(output_path,filename),"wb") as output_file:
+                        output_file.write(output_binary)
+                        print(f"{filename}: {len(output_binary)} ({hex(len(output_binary))}) bytes written.")
 
-            except FileNotFoundError:
-                print("OpOption.bin.csv not found in translate directory.")
+                except FileNotFoundError:
+                    print(f"{filename}.csv not found in translate directory.")
 
-    except FileNotFoundError:
-        print("OpOption.bin not found in source directory.")
+        except FileNotFoundError:
+            print(f"{filename} not found in source directory.")
 
 
 if __name__ == "__main__":
