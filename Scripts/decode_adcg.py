@@ -85,6 +85,11 @@ def weave_adcg(input_data):
             with Image.open("~temp.png") as png:
                 output_image.paste(png,(data.x,data.y))
 
+        if os.path.isfile("~temp.pvr"):
+            os.remove("~temp.pvr")
+        if os.path.isfile("~temp.png"):
+            os.remove("~temp.png")
+
         return output_image
 
 
@@ -112,7 +117,7 @@ def extract_adcg(input_file,offset=0,end=-1):
                 adcg_pos = mm.find(b'ADCG',mm.tell())
 
                 if adcg_pos > end:
-                    break
+                    return files_written
 
                 if adcg_pos != -1:
                     mm.seek(adcg_pos)
@@ -154,27 +159,26 @@ def extract_adcg(input_file,offset=0,end=-1):
 
                     adcg_index += 1
 
-            print(f"Wrote {files_written} ADCG + PNG file pairs.")
-
-    if os.path.isfile("~temp.pvr"):
-        os.remove("~temp.pvr")
-    if os.path.isfile("~temp.png"):
-        os.remove("~temp.png")
+                else:
+                    return files_written
 
 
 def main():
 
     if len(sys.argv) > 2:
         if len(sys.argv) >= 4:
-            extract_adcg(sys.argv[1],int(sys.argv[2]),int(sys.argv[3]))
+            files_written = extract_adcg(sys.argv[1],int(sys.argv[2],(16 if sys.argv[2].startswith("0x") else 10)),int(sys.argv[3]))
         elif len(sys.argv) == 3:
-            extract_adcg(sys.argv[1],int(sys.argv[2]))
+            files_written = extract_adcg(sys.argv[1],int(sys.argv[2],(16 if sys.argv[2].startswith("0x") else 10)))
         else:
-            extract_adcg(sys.argv[1])
+            files_written = extract_adcg(sys.argv[1])
     elif len(sys.argv) == 2:
-        extract_adcg(sys.argv[1])
+        files_written = extract_adcg(sys.argv[1])
     else:
-        print("Specify input file containing ADCG data.\nOptional arguments: number of bytes to skip; number of bytes to search.")
+        print("Specify input file containing ADCG data.\nOptional arguments: number of bytes to skip; number of bytes to search. Hex offsets starting with 0x allowed.")
+        return
+
+    print(f"\nWrote {files_written} ADCG + PNG file pairs.")
 
 
 if __name__ == "__main__":
