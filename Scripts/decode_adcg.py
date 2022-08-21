@@ -24,7 +24,7 @@ path = os.path.realpath(os.path.dirname(sys.argv[0]))
 pvr2png_path = os.path.join(path,os.path.normpath(r".\lib\pvr2png.exe"))
 pvr2png_args = ["-q"]
 
-def weave_adcg(input_data):
+def weave_adcg(input_data,address):
     """Extracts the PVR subtextures from an uncompressed ADCG chunk,
     and attmpts to assemble it into a full image based on the properties
     in the ADCG header."""
@@ -82,8 +82,12 @@ def weave_adcg(input_data):
             pvr_convert.check_returncode()
 
             # Load converted texture into an Image object.
-            with Image.open("~temp.png") as png:
-                output_image.paste(png,(data.x,data.y))
+            if os.path.isfile("~temp.png"):
+                with Image.open("~temp.png") as png:
+                    output_image.paste(png,(data.x,data.y))
+            else:
+                print(f"Error processing subtexture in ADCG chunk at {address}. Check output.")
+                continue
 
         if os.path.isfile("~temp.pvr"):
             os.remove("~temp.pvr")
@@ -135,7 +139,7 @@ def extract_adcg(input_file,offset=0,end=-1):
                                 break
 
                         try:
-                            adcg_uncompressed = bytes(prs.decompress(adcg_prs_data))
+                            adcg_uncompressed = bytes(prs.decompress(adcg_prs_data,address=abs_offset))
                         except:
                             print(f"Error processing ADCG chunk at {abs_offset}. Continuing with next chunk.")
                             continue
@@ -146,7 +150,7 @@ def extract_adcg(input_file,offset=0,end=-1):
                         with open(filename + ".adcg","wb") as raw_file:
                             raw_file.write(adcg_uncompressed)
 
-                        output_image = weave_adcg(adcg_uncompressed)
+                        output_image = weave_adcg(adcg_uncompressed,abs_offset)
 
                         with open(filename + ".png","wb") as output_file:
                             output_image.save(output_file)
