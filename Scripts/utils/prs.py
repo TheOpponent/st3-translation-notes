@@ -67,7 +67,7 @@ def compress(input_data):
     return output_data
 
 
-def decompress(input_data):
+def decompress(input_data,address=None):
     """Decompresses a PRS-compressed bytes object that has
     extra wrapping added.
     
@@ -84,7 +84,10 @@ def decompress(input_data):
     try:
         output_data = signature + struct.pack("<I",raw_length) + bytes(Prs.Decompress(input_data))
     except:
-        print("Unable to decompress.")
+        if address:
+            print(f"Unable to decompress data at {hex(address)}.")
+        else:
+            print("Unable to decompress.")
         return None
 
     return output_data
