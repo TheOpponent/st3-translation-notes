@@ -127,7 +127,7 @@ def extract_bpv1(bpv1_file, mm, bpv1_pos=0, filename_offset=0):
 
         chunk_size = struct.pack("<I",len(texture_data) + 8)
 
-        filename = f"_{hex(filename_offset)}_{subtextures_written}"
+        filename = f"_{hex(bpv1_pos + filename_offset)}_{subtextures_written}"
 
         output = b'PVRT' + chunk_size + data.format + b'\x00\x00' + struct.pack("<H",data.width) + struct.pack("<H",data.height) + texture_data
 
