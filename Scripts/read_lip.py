@@ -32,7 +32,7 @@ def main():
             print(f"{os.path.join(translate_path, file + '.csv')} already exists; not overwriting.")
             continue
 
-        # Read files in working directory. If first 4 bytes does not contain signature ALPD, skip the file.
+        # Read files in working directory. If first 4 bytes do not contain signature ALPD, skip the file.
         with open(os.path.join(source_path,file),"rb") as f:
             if f.read(4) != b'ALPD':
                 return
@@ -76,13 +76,13 @@ def main():
         print(f"{file}: Data area length: {file_size}. Entries: {table_length}.")
 
     if files_written > 0:
-            print(f"\n{files_written} CSV file(s) written to {translate_path}.")
+        print(f"\n{files_written} CSV file(s) written to {translate_path}.")
 
     else:
         print(f"No files written.")
 
     if backup_files_written > 0:
-        print(f"\n{files_written} CSV file(s) written to {backups_path}.")
+        print(f"\n{backup_files_written} CSV file(s) written to {backups_path}.")
 
 
 if __name__ == "__main__":
