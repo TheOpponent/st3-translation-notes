@@ -4,7 +4,7 @@
 # Decompressed SBX files are saved in the 'source' subdirectory with a SBXU extension.
 # It outputs CSV files in the 'translate' and 'subroutine' subdirectories, using pipe characters | as delimiters.
 #
-# Two CSV values are written for each file, one for the strings and one for the subroutine binary data.
+# Two CSV files are written for each SBX/SBN file, one for the strings and one for the subroutine binary data.
 # Rows for the strings contain: string offset, string type ("code" or "dialogue"), text converted to UTF-8.
 # Rows for subroutine data contain: four data values, data offset, subroutine name from strings, bytes.
 
@@ -94,7 +94,10 @@ def main():
                 if text.isascii():
                     string_type = "code"
                 else:
-                    string_type = "dialogue"
+                    if "　　▼" in text:
+                        string_type = "lcd"
+                    else:
+                        string_type = "dialogue"
 
                 string_data.append([str(i) for i in [hex(data_location),string_type,text]])
                 strings.append(text)
@@ -155,7 +158,7 @@ def main():
         return
 
     if backup_files_written > 0:
-        print(f"\n{files_written1} CSV file(s) written to {backups_path}.")
+        print(f"{files_written1} CSV file(s) written to {backups_path}.")
 
     if files_written2 > 0:
         print(f"{files_written2} CSV file(s) written to {subroutines_path}.")
