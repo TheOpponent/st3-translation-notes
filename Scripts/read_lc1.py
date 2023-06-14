@@ -3,7 +3,7 @@
 # Pillow is required as a dependency.
 #
 # The colors of the output files are:
-# 000000 707070 F0F0F0
+# 000000 707070 808080 F0F0F0
 
 import os
 import struct
