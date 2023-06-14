@@ -46,7 +46,7 @@ def main():
                     image_data = input_data.read(image_size)
 
                     # Draw image.
-                    image = Image.new(mode="L",size=(image_width,image_height))
+                    image = Image.new(mode="RGB",size=(image_width,image_height))
                     d = ImageDraw.Draw(image)
                     run_length = 0 
                     color = 0
@@ -61,7 +61,7 @@ def main():
                         color = (byte & 15) << 4 # Get right nybble of current byte and shift left.
 
                         while run_length > 0:
-                            d.point([x,y],color)
+                            d.point([x,y],(color,color,color))
                             run_length -= 1
                             if x < image.width - 1:
                                 x += 1
