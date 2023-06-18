@@ -294,7 +294,7 @@ def main():
     while True:
         input_str = input("String (Input blank string to exit): ")
         if input_str != "" :
-            print(ascii_to_sjis(input_str).hex(),"\n")
+            print(ascii_to_sjis(input_str,break_lines=False)[0].hex(),"\n")
         else:
             break
         
