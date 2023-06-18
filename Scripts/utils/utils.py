@@ -289,7 +289,7 @@ def read_string(file,encoding="shift_jis_2004"):
 
 def main():
     """When run as a script, encode strings to binary Shift_JIS-2004
-    using the default linebreak arguments."""
+    without line breaks."""
 
     while True:
         input_str = input("String (Input blank string to exit): ")
