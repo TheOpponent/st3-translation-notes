@@ -26,7 +26,7 @@ pvr2png_args = ["-q"]
 
 def weave_adcg(input_data,address):
     """Extracts the PVR subtextures from an uncompressed ADCG chunk,
-    and attmpts to assemble it into a full image based on the properties
+    and attempts to assemble it into a full image based on the properties
     in the ADCG header."""
 
     ADCGSubTexture = namedtuple("ADCGSubTexture","id offset x y value1")
@@ -53,10 +53,10 @@ def weave_adcg(input_data,address):
 
         for _ in range(textures_num):
             textures.append(ADCGSubTexture(struct.unpack("<I",stream.read(4))[0],
-                                struct.unpack("<I",stream.read(4))[0],
-                                struct.unpack("<H",stream.read(2))[0],
-                                struct.unpack("<H",stream.read(2))[0],
-                                stream.read(4)))
+                                           struct.unpack("<I",stream.read(4))[0],
+                                           struct.unpack("<H",stream.read(2))[0],
+                                           struct.unpack("<H",stream.read(2))[0],
+                                           stream.read(4)))
 
         # Create PVR textures.
         for i,data in enumerate(textures):
