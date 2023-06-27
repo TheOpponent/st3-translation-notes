@@ -150,6 +150,7 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     '7': 0x8247,
     '8': 0x8248,
     '9': 0x8249,
+    '９': 0x8258, # Control character for playtime counter in OpOptionSave.bin.
     '\\': 0x2f2f,
     '{': None, # Ignore curly brackets as they are used for control codes.
     '}': None}

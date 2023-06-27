@@ -22,7 +22,7 @@ def main():
     # List containing: file name, location of offset table, number of bytes between offset table and string table, number of indexes.
     op_files = [
         ["OpOption.bin",0x23b0,133,51],
-        ["OpOptionSave.bin",0x5c4c,235,133],
+        ["OpOptionSave.bin",0x5c4c,155,143],
         ["OpSelectVm.bin",0x7b30,299,11]
     ]
 

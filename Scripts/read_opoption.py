@@ -31,6 +31,11 @@ def main():
 
     for filename,string_table,strings in op_files:
 
+        # If a CSV for the file already exists, do not process.
+        if os.path.exists(os.path.join(translate_path, filename + ".csv")):
+            print(f"{os.path.join(translate_path, filename + '.csv')} already exists; not overwriting.")
+            continue
+
         try:
             with open(os.path.join(source_path,filename),"rb") as f:
 
