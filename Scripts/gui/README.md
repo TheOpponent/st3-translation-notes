@@ -9,7 +9,7 @@ This is a tile editor written in wxPython created solely to edit [SKFONT.CG](htt
 
 Mr. SKFONT requires Pillow and wxPython as dependencies.
 
-```python3 skfont_editor.cg```
+```python3 skfont_editor.py```
 
 - Use the settings in the property grid, the mouse wheel, or the scroll bar to navigate the font tiles. Double click on a tile to set it as the tile offset.
 - Click on the **Replace Tiles...** button to open a PNG file and overwrite the tiles starting at the currently selected tile. The PNG file must be an RGB image with 8 bits per channel and no transparency. The image must have a height of 26 and a width of a multiple of 26. The red channel of this image will be used to generate the font tiles. You will be asked to confirm the replacement of the tiles.
