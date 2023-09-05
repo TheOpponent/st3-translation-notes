@@ -11,9 +11,9 @@ Mr. SKFONT requires Pillow and wxPython as dependencies.
 
 ```python3 skfont_editor.py```
 
-- Use the settings in the property grid, the mouse wheel, or the scroll bar to navigate the font tiles. Double click on a tile to set it as the tile offset.
+- Use the settings in the property grid, the mouse wheel, the scroll bar, or the keyboard to navigate the font tiles. Double click on a tile to set it as the tile offset.
 - Click on the **Replace Tiles...** button to open a PNG file and overwrite the tiles starting at the currently selected tile. The PNG file must be an RGB image with 8 bits per channel and no transparency. The image must have a height of 26 and a width of a multiple of 26. The red channel of this image will be used to generate the font tiles. You will be asked to confirm the replacement of the tiles.
-- Click on the **Export Tile...** button to export the currently selected tile to a PNG file. This currently supports exporting only one tile at a time.
+- Click on the **Export Tile...** button to export the currently selected tile to a PNG file. You will be asked to select a number of tiles to export. The exported image will contain the range of tiles in a single row.
 - Click on the **Save SKFONT.CG** button to save your changes.
 
 ### Notes
