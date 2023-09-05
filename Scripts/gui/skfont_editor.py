@@ -425,6 +425,7 @@ class MainFrame(wx.Frame):
 
         self.tile_offset = max(0,min(self.tile_offset,self.TILE_MAX - tile_limit + 1))
         self.selected_tile = max(0,min(self.selected_tile,self.TILE_MAX))
+        self.pg.SetPropertyValue("TileOffset",self.tile_offset)
         self.pg.ChangePropertyValue("SelectedTile",self.selected_tile)
 
     def on_mousewheel(self,event):
