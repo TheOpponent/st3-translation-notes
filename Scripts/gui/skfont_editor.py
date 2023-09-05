@@ -42,15 +42,13 @@ class MainFrame(wx.Frame):
     def __init__(self, parent, title):
         super().__init__(parent=None, title=title, size=(800, 600))
 
-        self.VERSION = "1.0.0"
+        self.VERSION = "1.1.0"
         self.TILE_MAX = 3488
 
         main_sizer = wx.BoxSizer(orient=wx.HORIZONTAL)
 
         self.file_data = b''
         self.tiles = []
-        self.tile_size = 26
-        self.tile_data_length = 338
         self.tile_rows = 10
         self.tile_cols = 10
         self.tile_scale = 1
@@ -147,13 +145,13 @@ class MainFrame(wx.Frame):
         self.pg_panel.SetSizer(pg_sizer)
 
         # Create tile editor panel.
-        # TODO: Keyboard controls.
         self.tile_grid = self.create_tile_bitmap(self.tiles,self.tile_offset,self.TILE_MAX,self.tile_rows,self.tile_cols,self.tile_size,self.tile_scale)
         self.tilegrid_panel = GridBitmap(self,self.tile_grid,self.tile_rows,self.tile_cols)
         tilegrid_sizer = wx.BoxSizer(orient=wx.HORIZONTAL)
 
         self.scrollbar = wx.ScrollBar(self.tilegrid_panel,style=wx.SB_VERTICAL)
         self.scrollbar.SetScrollbar(0,self.tile_rows,self.TILE_MAX // self.tile_cols,self.tile_rows)
+        self.scrollbar.Bind(wx.EVT_KEY_DOWN,self.on_scroll_key)
         self.scrollbar.Bind(wx.EVT_SCROLL,self.on_scroll)
 
         tilegrid_sizer.AddStretchSpacer()
@@ -163,6 +161,7 @@ class MainFrame(wx.Frame):
         self.tilegrid_panel.Bind(wx.EVT_LEFT_DOWN,self.on_tile_click)
         self.tilegrid_panel.Bind(wx.EVT_LEFT_DCLICK,self.on_tile_doubleclick)
         self.tilegrid_panel.Bind(wx.EVT_MOUSEWHEEL,self.on_mousewheel)
+        self.tilegrid_panel.Bind(wx.EVT_CHAR_HOOK,self.on_tilegrid_panel_key)
 
         # Populate main sizer.
         main_sizer.Add(self.pg_panel, 0, wx.EXPAND)
@@ -172,8 +171,8 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE,self.on_close)
 
     def create_tile_bitmap(self,tile_source: list,tile_range_start: int,tile_range_max: int,rows: int,cols: int,size: int,scale: int,add_gridlines=False):
-        """Regenerate the bitmap for the tile grid from tile_source, a list of FontTile objects, 
-        starting from tile_range_start and not exceeding tile_range_max. Returns a wx.Bitmap. 
+        """Regenerate the bitmap for the tile grid from tile_source, a list of FontTile objects,
+        starting from tile_range_start and not exceeding tile_range_max. Returns a wx.Bitmap.
         Call the Refresh() method on the window containing it afterward."""
 
         # Rows and columns are transposed for x and y dimensions.
@@ -255,11 +254,11 @@ class MainFrame(wx.Frame):
                     new_tiles.append(FontTile(array,self.tile_size))
 
             new_tiles_bitmap = self.create_tile_bitmap(new_tiles,0,len(new_tiles),1,len(new_tiles),self.tile_size,1,True)
-            confirm = ReplaceTilesDialog(self,len(new_tiles),self.selected_tile,new_tiles_bitmap)
-            if confirm.ShowModal() == wx.YES:
-                for i in range(0,len(new_tiles)):
-                    self.tiles[self.selected_tile + i] = new_tiles[i]
-                self.modified = True
+            with self.ReplaceTilesDialog(self,len(new_tiles),self.selected_tile,new_tiles_bitmap) as dialog:
+                if dialog.ShowModal() == wx.OK:
+                    for i in range(0,len(new_tiles)):
+                        self.tiles[self.selected_tile + i] = new_tiles[i]
+                    self.modified = True
 
             # Update view.
             self.tile_grid = self.create_tile_bitmap(self.tiles,self.tile_offset,self.TILE_MAX,self.tile_rows,self.tile_cols,self.tile_size,self.tile_scale)
@@ -267,22 +266,28 @@ class MainFrame(wx.Frame):
             self.tilegrid_panel.Refresh()
 
     def on_export_tile(self,event):
-        """Save the selected tile as a PNG image."""
-        # TODO: Support exporting multiple tiles at once.
+        """Save the selected tiles as a PNG image."""
 
-        save_filename = wx.FileSelector("Save PNG Image",wildcard="*.png",flags=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-        if save_filename != "":
-            try:
-                self.tiles[self.selected_tile].image.save(save_filename,format="PNG")
-            except Exception as e:
-                wx.MessageBox(str(e),"Error",wx.OK | wx.ICON_ERROR)
+        with self.ExportTilesDialog(self,self.selected_tile) as dialog:
+            if dialog.ShowModal() == wx.OK:
+                tile_count = dialog.tile_count
+                output_image = Image.new("RGB",(self.tile_size * tile_count,self.tile_size))
+                for i in range(0,tile_count):
+                    output_image.paste(self.tiles[self.selected_tile + i].image,(self.tile_size * i,0))
+                save_filename = wx.FileSelector("Save PNG Image",wildcard="*.png",flags=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                if save_filename != "":
+                    try:
+                        output_image.save(save_filename,"PNG")
+                    except Exception as e:
+                        wx.MessageBox(str(e),"Error",wx.OK | wx.ICON_ERROR)
 
     def on_save_skfont(self,event):
         self.save_skfont()
         event.Skip()
 
     def on_about(self,event):
-        AboutDialog(self,self.VERSION).ShowModal()
+        with self.AboutDialog(self,self.VERSION) as dialog:
+            dialog.ShowModal()
         event.Skip()
 
     def on_text_entry(self,event):
@@ -323,11 +328,16 @@ class MainFrame(wx.Frame):
             self.pg.SetPropertyAttribute("TileOffset", "Max",self.TILE_MAX - tile_limit)
 
             if self.selected_tile < self.tile_offset:
-                self.tile_offset = self.selected_tile
+                if self.pg_source != 'keyboard':
+                    self.tile_offset = self.selected_tile
+                    self.tile_cursor = (0,0)
+                else:
+                    self.tile_offset -= self.tile_cols
+                    self.tile_cursor = (self.selected_tile - self.tile_offset,0)
                 self.pg.SetPropertyValue("TileOffset",self.tile_offset)
-                self.tile_cursor = (0,0)
+
             elif self.selected_tile >= self.tile_offset + tile_limit:
-                if self.pg_source == 'mousewheel':
+                if self.pg_source in ['keyboard','mousewheel']:
                     self.tile_offset += self.tile_cols
                 else:
                     self.tile_offset = self.selected_tile - tile_limit + 1
@@ -335,7 +345,8 @@ class MainFrame(wx.Frame):
 
                 self.pg.SetPropertyValue("TileOffset",self.tile_offset)
 
-            self.scrollbar.SetScrollbar(self.tile_offset // self.tile_cols,self.tile_rows,self.TILE_MAX // self.tile_cols,self.tile_rows)
+            # Add 1 to the range to allow the last row to be incomplete.
+            self.scrollbar.SetScrollbar(self.tile_offset // self.tile_cols,self.tile_rows,self.TILE_MAX // self.tile_cols + 1,self.tile_rows)
 
             self.pg.SetPropertyValue("SelectedTile",self.selected_tile)
 
@@ -377,6 +388,45 @@ class MainFrame(wx.Frame):
             self.tilegrid_panel.select_tile((0,0))
             self.pg.ChangePropertyValue("TileOffset",self.tile_offset)
 
+    def on_tilegrid_panel_key(self,event):
+        """Move the cursor in response to the arrow keys and Page Up and Page Down."""
+
+        key = event.GetKeyCode()
+        tile_limit = self.tile_rows * self.tile_cols
+
+        if key == wx.WXK_DOWN:
+            self.selected_tile += self.tile_cols
+            self.pg_source = 'keyboard'
+        elif key == wx.WXK_UP:
+            self.selected_tile -= self.tile_cols
+            self.pg_source = 'keyboard'
+        elif key == wx.WXK_LEFT:
+            self.selected_tile -= 1
+            self.pg_source = 'keyboard'
+        elif key == wx.WXK_RIGHT:
+            self.selected_tile += 1
+            self.pg_source = 'keyboard'
+        elif key == wx.WXK_PAGEDOWN:
+            self.tile_offset += tile_limit
+            self.selected_tile += tile_limit
+            self.pg_source = 'keyboard'
+        elif key == wx.WXK_PAGEUP:
+            self.tile_offset -= tile_limit
+            self.selected_tile -= tile_limit
+            self.pg_source = 'keyboard'
+        elif key == wx.WXK_HOME:
+            self.tile_offset = 0
+            self.selected_tile = 0
+            self.pg_source = 'keyboard'
+        elif key == wx.WXK_END:
+            self.tile_offset = self.TILE_MAX - tile_limit + 1
+            self.selected_tile = self.TILE_MAX
+            self.pg_source = 'keyboard'
+
+        self.tile_offset = max(0,min(self.tile_offset,self.TILE_MAX - tile_limit + 1))
+        self.selected_tile = max(0,min(self.selected_tile,self.TILE_MAX))
+        self.pg.ChangePropertyValue("SelectedTile",self.selected_tile)
+
     def on_mousewheel(self,event):
         """Scroll one tile row on mouse wheel input."""
 
@@ -399,13 +449,21 @@ class MainFrame(wx.Frame):
         self.pg.ChangePropertyValue("SelectedTile",self.selected_tile)
         event.Skip()
 
+    def on_scroll_key(self,event):
+        """The scrollbar should not respond to Left or Right arrow keys,
+        so consume those inputs here."""
+
+        key = event.GetKeyCode()
+
+        if key in [wx.WXK_LEFT,wx.WXK_RIGHT,wx.WXK_UP,wx.WXK_DOWN]:
+            return
+
+        event.Skip()
+
     def on_scroll(self,event):
         """Scroll at least one tile row on scrollbar input."""
 
-        tile_limit = self.tile_rows * self.tile_cols
-        self.pg_source = 'mousewheel'
         value = self.scrollbar.GetThumbPosition()
-        old_value = self.tile_offset // self.tile_cols
 
         # Store old tile values based on cursor position, then replace with calculated values from scrollbar position.
         old_tile_offset = self.tile_offset % self.tile_cols
@@ -414,8 +472,8 @@ class MainFrame(wx.Frame):
         self.selected_tile = self.tile_offset + old_selected_tile
 
         # Bounds checking for tile values.
-        self.tile_offset = max(0,min(self.tile_offset,self.TILE_MAX - tile_limit))
-        self.selected_tile = max(0,min(self.selected_tile,self.TILE_MAX - tile_limit))
+        self.tile_offset = max(0,min(self.tile_offset,self.TILE_MAX))
+        self.selected_tile = max(0,min(self.selected_tile,self.TILE_MAX))
 
         self.pg.SetPropertyValue("TileOffset",self.tile_offset)
         self.pg.ChangePropertyValue("SelectedTile",self.selected_tile)
@@ -433,78 +491,126 @@ class MainFrame(wx.Frame):
         event.Skip()
 
 
-class ReplaceTilesDialog(wx.Dialog):
-    """Dialog that shows the input image with grid lines drawn over it
-    before they are committed to the main tile grid."""
+    class ReplaceTilesDialog(wx.Dialog):
+        """Dialog that shows the input image with grid lines drawn over it
+        before they are committed to the main tile grid."""
 
-    def __init__(self,parent,tile_count: int,selected_tile: int,tile_grid_bitmap: wx.Bitmap,title="Replacing Tiles"):
-        super().__init__(parent,wx.ID_ANY,title=title)
+        def __init__(self,parent,tile_count: int,selected_tile: int,tile_grid_bitmap: wx.Bitmap,title="Replacing Tiles"):
+            super().__init__(parent,wx.ID_ANY,title=title)
 
-        dialog_sizer = wx.BoxSizer(wx.VERTICAL)
+            dialog_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        main_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_panel = wx.Panel(self)
-        label = wx.StaticText(main_panel,label=f"Replacing {tile_count} tile(s) at tile number {selected_tile}.")
-        tilepanel_grid = wx.StaticBitmap(main_panel,bitmap=tile_grid_bitmap)
-        main_sizer.Add(label,0,wx.ALL |wx.CENTER,10)
-        main_sizer.Add(tilepanel_grid,0,wx.ALL | wx.CENTER,10)
-        main_panel.SetSizer(main_sizer)
+            main_sizer = wx.BoxSizer(wx.VERTICAL)
+            main_panel = wx.Panel(self)
+            label = wx.StaticText(main_panel,label=f"Replacing {tile_count} tile(s) at tile number {selected_tile}.")
+            tilepanel_grid = wx.StaticBitmap(main_panel,bitmap=tile_grid_bitmap)
+            main_sizer.Add(label,0,wx.ALL | wx.CENTER,10)
+            main_sizer.Add(tilepanel_grid,0,wx.ALL | wx.CENTER,10)
 
-        yesno_sizer = wx.BoxSizer()
-        yesno_panel = wx.Panel(self)
-        yes_button = wx.Button(yesno_panel,label="Yes")
-        yes_button.Bind(wx.EVT_BUTTON,self.on_yes)
-        no_button = wx.Button(yesno_panel,label="No")
-        no_button.Bind(wx.EVT_BUTTON,self.on_no)
-        yesno_sizer.Add(yes_button,0,wx.ALIGN_CENTER_VERTICAL | wx.ALL,5)
-        yesno_sizer.Add(no_button,0,wx.ALIGN_CENTER_VERTICAL | wx.ALL,5)
-        yesno_panel.SetSizer(yesno_sizer)
+            ok_sizer = wx.StdDialogButtonSizer()
+            ok_button = wx.Button(main_panel,wx.ID_OK)
+            ok_button.Bind(wx.EVT_BUTTON,self.on_ok)
+            ok_sizer.AddButton(ok_button)
+            cancel_button = wx.Button(main_panel,wx.ID_CANCEL)
+            cancel_button.Bind(wx.EVT_BUTTON,self.on_cancel)
+            ok_sizer.AddButton(cancel_button)
+            ok_sizer.Realize()
+            main_sizer.Add(ok_sizer,0,wx.ALL | wx.CENTER,5)
 
-        dialog_sizer.Add(main_panel,0,wx.CENTER)
-        dialog_sizer.Add(yesno_panel,0,wx.CENTER)
+            main_panel.SetSizer(main_sizer)
 
-        self.SetSizer(dialog_sizer)
-        self.Fit()
-    
-    def on_yes(self,event):
-        self.EndModal(wx.YES)
-    
-    def on_no(self,event):
-        self.EndModal(wx.NO)
+            dialog_sizer.Add(main_panel,0,wx.CENTER)
+
+            self.SetSizer(dialog_sizer)
+            self.Fit()
+
+        def on_ok(self,event):
+            self.EndModal(wx.OK)
+
+        def on_cancel(self,event):
+            self.EndModal(wx.CANCEL)
 
 
-class AboutDialog(wx.Dialog):
-    def __init__(self,parent,version):
-        super().__init__(parent,wx.ID_ANY,title="About Mr. SKFONT")
+    class ExportTilesDialog(wx.Dialog):
+        """Prompt the user to select a number of tiles to export."""
+        # TODO: Show a live preview of the tiles to be exported.
 
-        sizer = wx.GridBagSizer()
-        panel = wx.Panel(self)
+        def __init__(self,parent,selected_tile: int,title="Export Tiles"):
+            super().__init__(parent,wx.ID_ANY,title=title)
 
-        text = wx.StaticText(panel,label=f"Mr. SKFONT version {version} by The Opponent\nPart of the Sakura Taisen 3 translation notes repository.\n\nThis program is in the public domain (Unlicense).",style=wx.LEFT)
-        link = hl.HyperLinkCtrl(panel,-1,"https://github.com/TheOpponent/st3-translation-notes",URL="https://github.com/TheOpponent/st3-translation-notes",style=wx.TE_LEFT)
-        button = wx.Button(panel,label="OK")
-        button.Bind(wx.EVT_BUTTON,self.on_button)
-        spacer_top = wx.StaticText(panel,label="")
-        spacer_top.SetMinSize((0,10))
-        spacer_left = wx.StaticText(panel,label="")
-        spacer_left.SetMinSize((20,0))
-        spacer_right = wx.StaticText(panel,label="")
-        spacer_right.SetMinSize((20,0))
+            self.selected_tile = selected_tile
+            self.parent = parent
+            self.tile_count = 1
+            dialog_sizer = wx.GridBagSizer()
 
-        # TODO: Is there a better way to add padding on one side?
-        sizer.Add(spacer_top,wx.GBPosition(0,0),flag=wx.EXPAND)
-        sizer.Add(spacer_left,wx.GBPosition(1,0),flag=wx.EXPAND)
-        sizer.Add(spacer_right,wx.GBPosition(1,2),flag=wx.EXPAND)
-        sizer.Add(text,wx.GBPosition(2,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
-        sizer.Add(link,wx.GBPosition(3,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
-        sizer.Add(button,wx.GBPosition(4,1),flag=wx.ALIGN_CENTER_HORIZONTAL| wx.ALL,border=5)
+            main_panel = wx.Panel(self)
 
-        panel.SetSizer(sizer)
-        panel.Fit()
-        self.Fit()
+            label1 = wx.StaticText(main_panel,label=f"Exporting tiles starting from tile number {selected_tile}.")
+            label2 = wx.StaticText(main_panel,label=f"Select the number of tiles to export:")
+            self.spinctrl = wx.SpinCtrl(main_panel,wx.ID_ANY,min=1,max=parent.TILE_MAX,initial=1)
+            self.spinctrl.Bind(wx.EVT_SPINCTRL,self.on_spinctrl)
 
-    def on_button(self,event):
-        self.EndModal(wx.OK)
+            ok_sizer = wx.StdDialogButtonSizer()
+            ok_button = wx.Button(main_panel,wx.ID_OK)
+            ok_button.Bind(wx.EVT_BUTTON,self.on_ok)
+            ok_sizer.AddButton(ok_button)
+            cancel_button = wx.Button(main_panel,wx.ID_CANCEL)
+            cancel_button.Bind(wx.EVT_BUTTON,self.on_cancel)
+            ok_sizer.AddButton(cancel_button)
+            ok_sizer.Realize()
+
+            dialog_sizer.Add(label1,wx.GBPosition(0,0),wx.GBSpan(1,2),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+            dialog_sizer.Add(label2,wx.GBPosition(1,0),wx.GBSpan(1,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+            dialog_sizer.Add(self.spinctrl,wx.GBPosition(1,1),wx.GBSpan(1,1),flag=wx.ALL,border=5)
+            dialog_sizer.Add(ok_sizer,wx.GBPosition(2,0),wx.GBSpan(1,2),flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,border=5)
+
+            main_panel.SetSizer(dialog_sizer)
+            main_panel.Fit()
+            self.Fit()
+
+        def on_spinctrl(self,event):
+            self.tile_count = self.spinctrl.GetValue()
+            event.Skip()
+
+        def on_yes(self,event):
+            self.EndModal(wx.YES)
+
+        def on_no(self,event):
+            self.EndModal(wx.NO)
+
+
+    class AboutDialog(wx.Dialog):
+        def __init__(self,parent,version):
+            super().__init__(parent,wx.ID_ANY,title="About Mr. SKFONT")
+
+            sizer = wx.GridBagSizer()
+            panel = wx.Panel(self)
+
+            text = wx.StaticText(panel,label=f"Mr. SKFONT version {version} by The Opponent\nPart of the Sakura Taisen 3 translation notes repository.\n\nThis program is in the public domain (Unlicense).",style=wx.LEFT)
+            link = hl.HyperLinkCtrl(panel,-1,"https://github.com/TheOpponent/st3-translation-notes",URL="https://github.com/TheOpponent/st3-translation-notes",style=wx.TE_LEFT)
+            button = wx.Button(panel,label="OK")
+            button.Bind(wx.EVT_BUTTON,self.on_button)
+            spacer_top = wx.StaticText(panel,label="")
+            spacer_top.SetMinSize((0,10))
+            spacer_left = wx.StaticText(panel,label="")
+            spacer_left.SetMinSize((20,0))
+            spacer_right = wx.StaticText(panel,label="")
+            spacer_right.SetMinSize((20,0))
+
+            # TODO: Is there a better way to add padding on one side?
+            sizer.Add(spacer_top,wx.GBPosition(0,0),flag=wx.EXPAND)
+            sizer.Add(spacer_left,wx.GBPosition(1,0),flag=wx.EXPAND)
+            sizer.Add(spacer_right,wx.GBPosition(1,2),flag=wx.EXPAND)
+            sizer.Add(text,wx.GBPosition(2,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+            sizer.Add(link,wx.GBPosition(3,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+            sizer.Add(button,wx.GBPosition(4,1),flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,border=5)
+
+            panel.SetSizer(sizer)
+            panel.Fit()
+            self.Fit()
+
+        def on_button(self,event):
+            self.EndModal(wx.OK)
 
 
 class GridBitmap(wx.Panel):
