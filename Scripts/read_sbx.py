@@ -1,11 +1,13 @@
 # Based on the scripts from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695 by ZetpeR xax007@yandex.ru.
 #
 # This script reads compressed SBX files and uncompressed SBN files in the 'source' subdirectory.
-# Decompressed SBX files are saved in the 'source' subdirectory with a SBXU extension.
 # It outputs CSV files in the 'translate' and 'subroutine' subdirectories, using pipe characters | as delimiters.
 #
+# Decompressed SBX files are saved in the 'source/sbxu' subdirectory with a SBXU extension. 
+# These files are required for repacking the translated scripts and recompression to SBX.
+#
 # Two CSV files are written for each SBX/SBN file, one for the strings and one for the subroutine binary data.
-# Rows for the strings contain: string offset, string type ("code" or "dialogue"), text converted to UTF-8.
+# Rows for the strings contain: string offset, string type ("code", "dialogue", or "lcd"), text converted to UTF-8.
 # Rows for subroutine data contain: four data values, data offset, subroutine name from strings, bytes.
 
 import os
@@ -18,6 +20,7 @@ from utils.utils import read_string
 
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
 source_path = os.path.join(path,"source")
+sbxu_path = os.path.join(source_path,"sbxu")
 translate_path = os.path.join(path,"translate")
 backups_path = os.path.join(path,"backups")
 subroutines_path = os.path.join(path,"subroutines")
@@ -37,6 +40,8 @@ def main():
         os.makedirs(translate_path)
     if not os.path.exists(backups_path):
         os.makedirs(backups_path)
+    if not os.path.exists(subroutines_path):
+        os.makedirs(subroutines_path)
 
     for file in [i for i in os.listdir(source_path) if i.lower().endswith(('.sbx','.sbn'))]:
         
@@ -50,8 +55,10 @@ def main():
             # Read files in working directory. SBX files must be decompressed first.
             # After decompressing the SBX file, save it in the source subdirectory for later repacking.
             if file.lower().endswith(('.sbx')):
+                if not os.path.exists(sbxu_path):
+                    os.makedirs(sbxu_path)
                 input_data = prs.decompress(f.read())
-                with open(os.path.join(source_path,os.path.splitext(file)[0]) + ".SBXU","wb") as uncompressed_file:
+                with open(os.path.join(sbxu_path,os.path.splitext(file)[0]) + ".SBXU","wb") as uncompressed_file:
                     uncompressed_file.write(input_data)
                     print(f"Wrote uncompressed SBX file to {uncompressed_file.name}.")
 
@@ -140,7 +147,7 @@ def main():
                 # As there is no offset table for the binary data, reset data_location for next chunk by using the end of the current chunk.
                 data_location = input_data.tell()
 
-            with open(os.path.join(translate_path, file + "_16.csv"),"w", encoding="utf-8") as output_file:
+            with open(os.path.join(subroutines_path, file + "_16.csv"),"w", encoding="utf-8") as output_file:
                 for i in subroutines_data:
                     output = "|".join(i)
                     output_file.write(output + "\n")
