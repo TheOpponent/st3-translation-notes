@@ -139,8 +139,9 @@ def extract_adcg(input_file,offset=0,end=-1):
                                 break
 
                         try:
-                            adcg_uncompressed = bytes(prs.decompress(adcg_prs_data,address=abs_offset))
-                        except:
+                            adcg_uncompressed = bytes(prs.decompress(adcg_prs_data))
+                        except Exception as e:
+                            print(e)
                             print(f"Error processing ADCG chunk at {abs_offset}. Continuing with next chunk.")
                             continue
 

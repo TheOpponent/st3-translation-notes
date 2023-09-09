@@ -43,7 +43,7 @@ def decompress_bpv1(bpv1_file):
                         cprs_data += buffer
                     cprs_data += mm.read(4)
 
-                    bpv1_decompressed = prs.decompress(cprs_data,address=bpv1_pos)
+                    bpv1_decompressed = prs.decompress(cprs_data)
                     # Skip invalid data.
                     if bpv1_decompressed is None:
                         continue

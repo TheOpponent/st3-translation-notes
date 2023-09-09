@@ -22,6 +22,7 @@ path = os.path.realpath(os.path.dirname(sys.argv[0]))
 # Set these to the path and arguments of a utility that accepts a PVR file and output a PNG file.
 # It is recommended that the arguments include a switch that suppresses console output, if available.
 png2pvr_path = os.path.join(path,os.path.normpath(r".\lib\dospvr.exe"))
+# These arguments are valid only for a texture with ARGB4444 pixel format and square twiddled data format.
 png2pvr_args = [png2pvr_path,"-q","-tw","-cf","4444","~temp.png","-of","~temp.pvr"]
 
 def encode_adcg(input_adcg,input_png,texture_size=64):
@@ -61,7 +62,7 @@ def encode_adcg(input_adcg,input_png,texture_size=64):
     output_data = bytes(prs.compress(adcg_header + texture_data))
 
     with open(input_png + ".adcg.out","wb") as output_file:
-        output_file.write(output_data + b'EOFC\x00\x00\x00\x00')
+        output_file.write(output_data)
         print(f"{output_file.name}: Wrote {len(output_data)} bytes.")
 
 
