@@ -573,10 +573,10 @@ class MainFrame(wx.Frame):
             self.tile_count = self.spinctrl.GetValue()
             event.Skip()
 
-        def on_yes(self,event):
+        def on_ok(self,event):
             self.EndModal(wx.YES)
 
-        def on_no(self,event):
+        def on_cancel(self,event):
             self.EndModal(wx.NO)
 
 

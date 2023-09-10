@@ -3,7 +3,7 @@
 import struct
 import re
 
-def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
+def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs) -> tuple[bytearray,int]:
     """Converts a string of ASCII characters to 
     byte-swapped Shift-JIS and null-terminate it.
     
@@ -196,7 +196,7 @@ def ascii_to_sjis(input_str,break_lines=True,offset=0,*args,**kwargs):
     return (output,warnings)
 
 
-def linebreak(input_str,filename=None,line_id=None,length_limit=37,last_row_length_limit=37,row_limit=3):
+def linebreak(input_str,filename=None,line_id=None,length_limit=37,last_row_length_limit=37,row_limit=3) -> tuple[str,int,int]:
     """Break lines into rows according to length_limit. 
     Default length is 37.
     A backslash character is inserted at line breaks, 
@@ -266,7 +266,7 @@ def swap_bytes(value):
     return str[6:8] + str[4:6] + str[2:4] + str[0:2]    
 
 
-def read_string(file,encoding="shift_jis_2004"):
+def read_string(file,encoding="shift_jis_2004") -> bytearray:
     """Read a null-terminated string from a file object opened in 
     binary mode, using the codec given by the encoding argument. 
 
