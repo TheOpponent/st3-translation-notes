@@ -254,8 +254,8 @@ class MainFrame(wx.Frame):
                     new_tiles.append(FontTile(array,self.tile_size))
 
             new_tiles_bitmap = self.create_tile_bitmap(new_tiles,0,len(new_tiles),1,len(new_tiles),self.tile_size,1,True)
-            with self.ReplaceTilesDialog(self,len(new_tiles),self.selected_tile,new_tiles_bitmap) as dialog:
-                if dialog.ShowModal() == wx.OK:
+            with ReplaceTilesDialog(self,len(new_tiles),self.selected_tile,new_tiles_bitmap) as dialog:
+                if dialog.ShowModal() == wx.ID_OK:
                     for i in range(0,len(new_tiles)):
                         self.tiles[self.selected_tile + i] = new_tiles[i]
                     self.modified = True
@@ -268,8 +268,8 @@ class MainFrame(wx.Frame):
     def on_export_tile(self,event):
         """Save the selected tiles as a PNG image."""
 
-        with self.ExportTilesDialog(self,self.selected_tile) as dialog:
-            if dialog.ShowModal() == wx.OK:
+        with ExportTilesDialog(self,self.selected_tile) as dialog:
+            if dialog.ShowModal() == wx.ID_OK:
                 tile_count = dialog.tile_count
                 output_image = Image.new("RGB",(self.tile_size * tile_count,self.tile_size))
                 for i in range(0,tile_count):
@@ -286,7 +286,7 @@ class MainFrame(wx.Frame):
         event.Skip()
 
     def on_about(self,event):
-        with self.AboutDialog(self,self.VERSION) as dialog:
+        with AboutDialog(self,self.VERSION) as dialog:
             dialog.ShowModal()
         event.Skip()
 
@@ -492,126 +492,126 @@ class MainFrame(wx.Frame):
         event.Skip()
 
 
-    class ReplaceTilesDialog(wx.Dialog):
-        """Dialog that shows the input image with grid lines drawn over it
-        before they are committed to the main tile grid."""
+class ReplaceTilesDialog(wx.Dialog):
+    """Dialog that shows the input image with grid lines drawn over it
+    before they are committed to the main tile grid."""
 
-        def __init__(self,parent,tile_count: int,selected_tile: int,tile_grid_bitmap: wx.Bitmap,title="Replacing Tiles"):
-            super().__init__(parent,wx.ID_ANY,title=title)
+    def __init__(self,parent,tile_count: int,selected_tile: int,tile_grid_bitmap: wx.Bitmap,title="Replacing Tiles"):
+        super().__init__(parent,wx.ID_ANY,title=title)
 
-            dialog_sizer = wx.BoxSizer(wx.VERTICAL)
+        dialog_sizer = wx.BoxSizer(wx.VERTICAL)
 
-            main_sizer = wx.BoxSizer(wx.VERTICAL)
-            main_panel = wx.Panel(self)
-            label = wx.StaticText(main_panel,label=f"Replacing {tile_count} tile(s) at tile number {selected_tile}.")
-            tilepanel_grid = wx.StaticBitmap(main_panel,bitmap=tile_grid_bitmap)
-            main_sizer.Add(label,0,wx.ALL | wx.CENTER,10)
-            main_sizer.Add(tilepanel_grid,0,wx.ALL | wx.CENTER,10)
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        main_panel = wx.Panel(self)
+        label = wx.StaticText(main_panel,label=f"Replacing {tile_count} tile(s) at tile number {selected_tile}.")
+        tilepanel_grid = wx.StaticBitmap(main_panel,bitmap=tile_grid_bitmap)
+        main_sizer.Add(label,0,wx.ALL | wx.CENTER,10)
+        main_sizer.Add(tilepanel_grid,0,wx.ALL | wx.CENTER,10)
 
-            ok_sizer = wx.StdDialogButtonSizer()
-            ok_button = wx.Button(main_panel,wx.ID_OK)
-            ok_button.Bind(wx.EVT_BUTTON,self.on_ok)
-            ok_sizer.AddButton(ok_button)
-            cancel_button = wx.Button(main_panel,wx.ID_CANCEL)
-            cancel_button.Bind(wx.EVT_BUTTON,self.on_cancel)
-            ok_sizer.AddButton(cancel_button)
-            ok_sizer.Realize()
-            main_sizer.Add(ok_sizer,0,wx.ALL | wx.CENTER,5)
+        ok_sizer = wx.StdDialogButtonSizer()
+        ok_button = wx.Button(main_panel,wx.ID_OK)
+        ok_button.Bind(wx.EVT_BUTTON,self.on_ok)
+        ok_sizer.AddButton(ok_button)
+        cancel_button = wx.Button(main_panel,wx.ID_CANCEL)
+        cancel_button.Bind(wx.EVT_BUTTON,self.on_cancel)
+        ok_sizer.AddButton(cancel_button)
+        ok_sizer.Realize()
+        main_sizer.Add(ok_sizer,0,wx.ALL | wx.CENTER,5)
 
-            main_panel.SetSizer(main_sizer)
+        main_panel.SetSizer(main_sizer)
 
-            dialog_sizer.Add(main_panel,0,wx.CENTER)
+        dialog_sizer.Add(main_panel,0,wx.CENTER)
 
-            self.SetSizer(dialog_sizer)
-            self.Fit()
+        self.SetSizer(dialog_sizer)
+        self.Fit()
 
-        def on_ok(self,event):
-            self.EndModal(wx.OK)
+    def on_ok(self,event):
+        self.EndModal(wx.ID_OK)
 
-        def on_cancel(self,event):
-            self.EndModal(wx.CANCEL)
-
-
-    class ExportTilesDialog(wx.Dialog):
-        """Prompt the user to select a number of tiles to export."""
-        # TODO: Show a live preview of the tiles to be exported.
-
-        def __init__(self,parent,selected_tile: int,title="Export Tiles"):
-            super().__init__(parent,wx.ID_ANY,title=title)
-
-            self.selected_tile = selected_tile
-            self.parent = parent
-            self.tile_count = 1
-            dialog_sizer = wx.GridBagSizer()
-
-            main_panel = wx.Panel(self)
-
-            label1 = wx.StaticText(main_panel,label=f"Exporting tiles starting from tile number {selected_tile}.")
-            label2 = wx.StaticText(main_panel,label=f"Select the number of tiles to export:")
-            self.spinctrl = wx.SpinCtrl(main_panel,wx.ID_ANY,min=1,max=parent.TILE_MAX,initial=1)
-            self.spinctrl.Bind(wx.EVT_SPINCTRL,self.on_spinctrl)
-
-            ok_sizer = wx.StdDialogButtonSizer()
-            ok_button = wx.Button(main_panel,wx.ID_OK)
-            ok_button.Bind(wx.EVT_BUTTON,self.on_ok)
-            ok_sizer.AddButton(ok_button)
-            cancel_button = wx.Button(main_panel,wx.ID_CANCEL)
-            cancel_button.Bind(wx.EVT_BUTTON,self.on_cancel)
-            ok_sizer.AddButton(cancel_button)
-            ok_sizer.Realize()
-
-            dialog_sizer.Add(label1,wx.GBPosition(0,0),wx.GBSpan(1,2),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
-            dialog_sizer.Add(label2,wx.GBPosition(1,0),wx.GBSpan(1,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
-            dialog_sizer.Add(self.spinctrl,wx.GBPosition(1,1),wx.GBSpan(1,1),flag=wx.ALL,border=5)
-            dialog_sizer.Add(ok_sizer,wx.GBPosition(2,0),wx.GBSpan(1,2),flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,border=5)
-
-            main_panel.SetSizer(dialog_sizer)
-            main_panel.Fit()
-            self.Fit()
-
-        def on_spinctrl(self,event):
-            self.tile_count = self.spinctrl.GetValue()
-            event.Skip()
-
-        def on_ok(self,event):
-            self.EndModal(wx.YES)
-
-        def on_cancel(self,event):
-            self.EndModal(wx.NO)
+    def on_cancel(self,event):
+        self.EndModal(wx.ID_CANCEL)
 
 
-    class AboutDialog(wx.Dialog):
-        def __init__(self,parent,version):
-            super().__init__(parent,wx.ID_ANY,title="About Mr. SKFONT")
+class ExportTilesDialog(wx.Dialog):
+    """Prompt the user to select a number of tiles to export."""
+    # TODO: Show a live preview of the tiles to be exported.
 
-            sizer = wx.GridBagSizer()
-            panel = wx.Panel(self)
+    def __init__(self,parent,selected_tile: int,title="Export Tiles"):
+        super().__init__(parent,wx.ID_ANY,title=title)
 
-            text = wx.StaticText(panel,label=f"Mr. SKFONT version {version} by The Opponent\nPart of the Sakura Taisen 3 translation notes repository.\n\nThis program is in the public domain (Unlicense).",style=wx.LEFT)
-            link = hl.HyperLinkCtrl(panel,-1,"https://github.com/TheOpponent/st3-translation-notes",URL="https://github.com/TheOpponent/st3-translation-notes",style=wx.TE_LEFT)
-            button = wx.Button(panel,label="OK")
-            button.Bind(wx.EVT_BUTTON,self.on_button)
-            spacer_top = wx.StaticText(panel,label="")
-            spacer_top.SetMinSize((0,10))
-            spacer_left = wx.StaticText(panel,label="")
-            spacer_left.SetMinSize((20,0))
-            spacer_right = wx.StaticText(panel,label="")
-            spacer_right.SetMinSize((20,0))
+        self.selected_tile = selected_tile
+        self.parent = parent
+        self.tile_count = 1
+        dialog_sizer = wx.GridBagSizer()
 
-            # TODO: Is there a better way to add padding on one side?
-            sizer.Add(spacer_top,wx.GBPosition(0,0),flag=wx.EXPAND)
-            sizer.Add(spacer_left,wx.GBPosition(1,0),flag=wx.EXPAND)
-            sizer.Add(spacer_right,wx.GBPosition(1,2),flag=wx.EXPAND)
-            sizer.Add(text,wx.GBPosition(2,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
-            sizer.Add(link,wx.GBPosition(3,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
-            sizer.Add(button,wx.GBPosition(4,1),flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,border=5)
+        main_panel = wx.Panel(self)
 
-            panel.SetSizer(sizer)
-            panel.Fit()
-            self.Fit()
+        label1 = wx.StaticText(main_panel,label=f"Exporting tiles starting from tile number {selected_tile}.")
+        label2 = wx.StaticText(main_panel,label=f"Select the number of tiles to export:")
+        self.spinctrl = wx.SpinCtrl(main_panel,wx.ID_ANY,min=1,max=parent.TILE_MAX,initial=1)
+        self.spinctrl.Bind(wx.EVT_SPINCTRL,self.on_spinctrl)
 
-        def on_button(self,event):
-            self.EndModal(wx.OK)
+        ok_sizer = wx.StdDialogButtonSizer()
+        ok_button = wx.Button(main_panel,wx.ID_OK)
+        ok_button.Bind(wx.EVT_BUTTON,self.on_ok)
+        ok_sizer.AddButton(ok_button)
+        cancel_button = wx.Button(main_panel,wx.ID_CANCEL)
+        cancel_button.Bind(wx.EVT_BUTTON,self.on_cancel)
+        ok_sizer.AddButton(cancel_button)
+        ok_sizer.Realize()
+
+        dialog_sizer.Add(label1,wx.GBPosition(0,0),wx.GBSpan(1,2),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+        dialog_sizer.Add(label2,wx.GBPosition(1,0),wx.GBSpan(1,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+        dialog_sizer.Add(self.spinctrl,wx.GBPosition(1,1),wx.GBSpan(1,1),flag=wx.ALL,border=5)
+        dialog_sizer.Add(ok_sizer,wx.GBPosition(2,0),wx.GBSpan(1,2),flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,border=5)
+
+        main_panel.SetSizer(dialog_sizer)
+        main_panel.Fit()
+        self.Fit()
+
+    def on_spinctrl(self,event):
+        self.tile_count = self.spinctrl.GetValue()
+        event.Skip()
+
+    def on_ok(self,event):
+        self.EndModal(wx.ID_OK)
+
+    def on_cancel(self,event):
+        self.EndModal(wx.ID_CANCEL)
+
+
+class AboutDialog(wx.Dialog):
+    def __init__(self,parent,version):
+        super().__init__(parent,wx.ID_ANY,title="About Mr. SKFONT")
+
+        sizer = wx.GridBagSizer()
+        panel = wx.Panel(self)
+
+        text = wx.StaticText(panel,label=f"Mr. SKFONT version {version} by The Opponent\nPart of the Sakura Taisen 3 translation notes repository.\n\nThis program is in the public domain (Unlicense).",style=wx.LEFT)
+        link = hl.HyperLinkCtrl(panel,-1,"https://github.com/TheOpponent/st3-translation-notes",URL="https://github.com/TheOpponent/st3-translation-notes",style=wx.TE_LEFT)
+        button = wx.Button(panel,label="OK")
+        button.Bind(wx.EVT_BUTTON,self.on_button)
+        spacer_top = wx.StaticText(panel,label="")
+        spacer_top.SetMinSize((0,10))
+        spacer_left = wx.StaticText(panel,label="")
+        spacer_left.SetMinSize((20,0))
+        spacer_right = wx.StaticText(panel,label="")
+        spacer_right.SetMinSize((20,0))
+
+        # TODO: Is there a better way to add padding on one side?
+        sizer.Add(spacer_top,wx.GBPosition(0,0),flag=wx.EXPAND)
+        sizer.Add(spacer_left,wx.GBPosition(1,0),flag=wx.EXPAND)
+        sizer.Add(spacer_right,wx.GBPosition(1,2),flag=wx.EXPAND)
+        sizer.Add(text,wx.GBPosition(2,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+        sizer.Add(link,wx.GBPosition(3,1),flag=wx.ALIGN_LEFT | wx.ALL,border=5)
+        sizer.Add(button,wx.GBPosition(4,1),flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,border=5)
+
+        panel.SetSizer(sizer)
+        panel.Fit()
+        self.Fit()
+
+    def on_button(self,event):
+        self.EndModal(wx.ID_OK)
 
 
 class GridBitmap(wx.Panel):
