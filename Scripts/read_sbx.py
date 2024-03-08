@@ -25,9 +25,9 @@ def main():
     backups_path = os.path.join(path, "backups")
     subroutines_path = os.path.join(path, "subroutines")
 
-    files_written1 = 0
+    translate_csv_files_written = 0
     backup_files_written = 0
-    files_written2 = 0
+    subroutine_files_written = 0
     errors = 0
 
     if not os.path.exists(source_path):
@@ -45,11 +45,11 @@ def main():
     for file in [
         i for i in os.listdir(source_path) if i.lower().endswith((".sbx", ".sbn"))
     ]:
+        translate_csv_file = os.path.join(translate_path, file + ".csv")
+
         # If a CSV for the file already exists, do not process.
-        if os.path.exists(os.path.join(translate_path, file + ".csv")):
-            print(
-                f"{os.path.join(translate_path, file + '.csv')} already exists; not overwriting."
-            )
+        if os.path.exists(translate_csv_file):
+            print(f"{translate_csv_file} already exists; not overwriting.")
             continue
 
         with open(os.path.join(source_path, file), "rb") as f:
@@ -58,12 +58,16 @@ def main():
             if file.lower().endswith((".sbx")):
                 if not os.path.exists(sbxu_path):
                     os.makedirs(sbxu_path)
+
+                sbxu_file = os.path.join(sbxu_path, os.path.splitext(file)[0]) + ".SBXU"
+                if os.path.exists(sbxu_file):
+                    print(f"{sbxu_file} already exists; not overwriting.")
+                    continue
+
                 input_data = prs.decompress(f.read())
-                with open(
-                    os.path.join(sbxu_path, os.path.splitext(file)[0]) + ".SBXU", "wb"
-                ) as uncompressed_file:
-                    uncompressed_file.write(input_data)
-                    print(f"Wrote uncompressed SBX file to {uncompressed_file.name}.")
+                with open(sbxu_file, "wb") as file:
+                    file.write(input_data)
+                    print(f"Wrote uncompressed SBX file to {file.name}.")
 
                 input_data = BytesIO(input_data)
 
@@ -80,44 +84,42 @@ def main():
                 input_data.close()
                 continue
 
-            with open(
-                os.path.join(translate_path, file + ".csv"), "w", encoding="utf-8"
-            ) as output_file:
+            with open(translate_csv_file, "w", encoding="utf-8") as output_file:
                 for i in strings:
                     output = "|".join(i)
                     output_file.write(output + "\n")
-                files_written1 += 1
+                translate_csv_files_written += 1
 
+            backup_csv_file = os.path.join(backups_path, file + ".csv")
             # Create backup copies of the script CSV files, but do not overwrite existing copies.
-            if not os.path.exists(os.path.join(backups_path, file + ".csv")):
+            if not os.path.exists(backup_csv_file):
                 copyfile(
-                    os.path.join(translate_path, file + ".csv"),
-                    os.path.join(backups_path, file + ".csv"),
+                    translate_csv_file,
+                    backup_csv_file,
                 )
                 backup_files_written += 1
 
-            with open(
-                os.path.join(subroutines_path, file + "_16.csv"), "w", encoding="utf-8"
-            ) as output_file:
+            subroutine_csv_file = os.path.join(subroutines_path, file + "_16.csv")
+            with open(subroutine_csv_file, "w", encoding="utf-8") as output_file:
                 for i in subroutines:
                     output = "|".join(i)
                     output_file.write(output + "\n")
-                files_written2 += 1
+                subroutine_files_written += 1
 
         input_data.close()
 
-    if files_written1 > 0:
-        print(f"\n{files_written1} CSV file(s) written to {translate_path}.")
+    if translate_csv_files_written > 0:
+        print(f"\n{translate_csv_files_written} CSV file(s) written to {translate_path}.")
 
     else:
         print("No files written.")
         return
 
     if backup_files_written > 0:
-        print(f"{files_written1} CSV file(s) written to {backups_path}.")
+        print(f"{translate_csv_files_written} CSV file(s) written to {backups_path}.")
 
-    if files_written2 > 0:
-        print(f"{files_written2} CSV file(s) written to {subroutines_path}.")
+    if subroutine_files_written > 0:
+        print(f"{subroutine_files_written} CSV file(s) written to {subroutines_path}.")
 
     if errors > 0:
         print(f"\n{errors} error(s) during processing. See output for details.")
