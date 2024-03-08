@@ -31,7 +31,8 @@ def read_ascr(data: BytesIO, filename=""):
     # Skip header.
     data.seek(8)
 
-    if header := data.read(4) not in KNOWN_SIGNATURES:
+    header = data.read(4)
+    if header not in KNOWN_SIGNATURES:
         raise ParsingError(f"{filename}Header not recognized: {header.hex()}")
 
     # Location of table of offsets for text area at the end of this chunk.
