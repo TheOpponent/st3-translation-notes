@@ -25,57 +25,63 @@
 
 import struct
 import sys
+
 import numpy as np
 from PIL import Image
 
-def convert_font(input_file):
 
+def convert_font(input_file):
     with Image.open(input_file) as input_file:
-        output = b''
+        output = b""
 
         # Read image and split into equal number of 26 x 26 arrays.
         image = list(input_file.getdata(0))
         image_size = input_file.size
-        image_2d = np.empty((image_size[1],image_size[0]),dtype="uint8")
+        image_2d = np.empty((image_size[1], image_size[0]), dtype="uint8")
 
         try:
-            for i in range(0,26):
-                image_2d[i] = image[i * image_size[0]:(i + 1) * image_size[0]]
+            for i in range(0, 26):
+                image_2d[i] = image[i * image_size[0] : (i + 1) * image_size[0]]
 
             # Split into individual tiles.
-            tiles = np.hsplit(image_2d,image_size[0] / 26)
+            tiles = np.hsplit(image_2d, image_size[0] / 26)
             for i in tiles:
                 # Bitwise shift 4 to the right to obtain 0-F value for each pixel.
-                tile = np.right_shift(i,4)
+                tile = np.right_shift(i, 4)
 
                 # Divide each tile into 26 x 2 arrays.
-                tile_row_pairs = np.vsplit(tile,13)
+                tile_row_pairs = np.vsplit(tile, 13)
 
                 for row_pair in tile_row_pairs:
-                    for column in range(0,26):
+                    for column in range(0, 26):
                         # Upper pixel is right nybble; lower pixel is left nybble.
                         upper_pixel = row_pair[0][column]
                         lower_pixel = row_pair[1][column] << 4
                         pixels = upper_pixel + lower_pixel
 
-                        output += struct.pack("=B",pixels)
+                        output += struct.pack("=B", pixels)
 
         except ValueError:
-            print("Input PNG file must be 8-bit, no transparency, and have a height of 26 pixels and width a multiple of 26 pixels.")
+            print(
+                "Input PNG file must be 8-bit, no transparency, and have a height of 26 pixels and width a multiple of 26 pixels."
+            )
             return
 
         if len(sys.argv) >= 3:
-            with open(sys.argv[2],"wb") as output_file:
+            with open(sys.argv[2], "wb") as output_file:
                 output_file.write(output)
-                print(f"Paste the contents of {sys.argv[2]} into SKFONT.CG starting at the tile(s) to replace.")
+                print(
+                    f"Paste the contents of {sys.argv[2]} into SKFONT.CG starting at the tile(s) to replace."
+                )
 
         else:
             print(output.hex())
-            print("\nPaste the above hex into SKFONT.CG starting at the tile(s) to replace.")
+            print(
+                "\nPaste the above hex into SKFONT.CG starting at the tile(s) to replace."
+            )
 
 
 def main():
-
     if len(sys.argv) < 2:
         print("Specify input PNG file.")
         return

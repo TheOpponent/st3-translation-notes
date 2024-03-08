@@ -17,11 +17,13 @@
 import os
 import struct
 import sys
-from PIL import Image
 from itertools import groupby
 
+from PIL import Image
+
 path = os.path.join(os.path.realpath(os.path.dirname(sys.argv[0])))
-output_path = os.path.join(path,"output")
+output_path = os.path.join(path, "output")
+
 
 def convert_screen_data(input_file):
     """Convert a 4-color PNG image into RLE-encoded binary data.
@@ -29,20 +31,20 @@ def convert_screen_data(input_file):
     number of 00 bytes to insert as padding."""
 
     # Generate 4-color palette.
-    palette = Image.new('P',(1,1))
-    palette.putpalette([0,0,0,112,112,112,128,128,128,240,240,240])
+    palette = Image.new("P", (1, 1))
+    palette.putpalette([0, 0, 0, 112, 112, 112, 128, 128, 128, 240, 240, 240])
 
     with Image.open(input_file) as image:
-        output = b''
+        output = b""
 
-        image = image.convert('RGB').quantize(4,palette=palette)
+        image = image.convert("RGB").quantize(4, palette=palette)
         image_seq = list(image.getdata(0))
         image_size = image.size
 
         # Get RLE encoding.
-        rle = [(len(list(g)), k) for k,g in groupby(image_seq)]
+        rle = [(len(list(g)), k) for k, g in groupby(image_seq)]
 
-        for run_length,color in rle:
+        for run_length, color in rle:
             if run_length == 0:
                 continue
 
@@ -54,25 +56,24 @@ def convert_screen_data(input_file):
                 color = 15
 
             if run_length > 15:
-                repeat = divmod(run_length,15)
-                output += struct.pack("=B",240 + color) * repeat[0]
+                repeat = divmod(run_length, 15)
+                output += struct.pack("=B", 240 + color) * repeat[0]
                 if repeat[1] > 0:
-                    output += struct.pack("=B",(repeat[1] << 4) + color)
+                    output += struct.pack("=B", (repeat[1] << 4) + color)
             else:
-                output += struct.pack("=B",(run_length << 4) + color)
+                output += struct.pack("=B", (run_length << 4) + color)
 
-        if divmod(len(output),4)[1] > 0:
-            padding = 4 - divmod(len(output),4)[1]
+        if divmod(len(output), 4)[1] > 0:
+            padding = 4 - divmod(len(output), 4)[1]
         else:
             padding = 0
 
-    return (output,image_size[1],image_size[0],padding)
+    return (output, image_size[1], image_size[0], padding)
 
 
 def make_lc1(input_files):
-
-    table = b''
-    image_data = b''
+    table = b""
+    image_data = b""
     converted_images = []
 
     for i in input_files:
@@ -81,25 +82,35 @@ def make_lc1(input_files):
     table_length = len(input_files) * 20
 
     for i in converted_images:
-        table += struct.pack("<I",table_length + len(image_data) + 16)
-        table += struct.pack("<H",i[1])
-        table += struct.pack("<H",i[2])
-        table += struct.pack("<I",1)
-        table += struct.pack("<I",len(i[0]))
-        table += b'\x00' * 4
+        table += struct.pack("<I", table_length + len(image_data) + 16)
+        table += struct.pack("<H", i[1])
+        table += struct.pack("<H", i[2])
+        table += struct.pack("<I", 1)
+        table += struct.pack("<I", len(i[0]))
+        table += b"\x00" * 4
         image_data += i[0]
-        image_data += b'\x00' * i[3]
+        image_data += b"\x00" * i[3]
 
-    output = b'LCD1' + struct.pack("<I",table_length + len(image_data) + 16) + struct.pack("<I",16) + struct.pack("<I",len(converted_images)) + b'\x00\x00\x00\x00\x00\x00\x00\x00' + table + image_data + b'EOFC\x00\x00\x00\x00'
+    output = (
+        b"LCD1"
+        + struct.pack("<I", table_length + len(image_data) + 16)
+        + struct.pack("<I", 16)
+        + struct.pack("<I", len(converted_images))
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        + table
+        + image_data
+        + b"EOFC\x00\x00\x00\x00"
+    )
 
-    filename = os.path.join(output_path,os.path.split(sys.argv[1])[1].split(".")[0] + ".LC1")
-    with open(filename,"wb") as file:
+    filename = os.path.join(
+        output_path, os.path.split(sys.argv[1])[1].split(".")[0] + ".LC1"
+    )
+    with open(filename, "wb") as file:
         file.write(output)
         print(f"Wrote {len(sys.argv[1:])} image(s) to {os.path.abspath(filename)}.")
 
 
 def main():
-
     if len(sys.argv) < 2:
         print("Specify input PNG files.")
         return

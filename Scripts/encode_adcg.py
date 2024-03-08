@@ -19,7 +19,7 @@ from utils import prs
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 
-# Set these to the path and arguments of a utility that accepts a PVR file and output a PNG file.
+# Set these to the path and arguments of a utility that accepts a PNG file and outputs a PVR file.
 # It is recommended that the arguments include a switch that suppresses console output, if available.
 png2pvr_path = os.path.join(path,os.path.normpath(r".\lib\dospvr.exe"))
 # These arguments are valid only for a texture with ARGB4444 pixel format and square twiddled data format.

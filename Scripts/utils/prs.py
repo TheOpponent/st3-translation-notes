@@ -42,10 +42,11 @@ from array import array
 from collections import defaultdict, deque
 from io import BytesIO
 
+
 class Prs:
     """Class for input file to compress or decompress."""
 
-    def __init__(self,data):
+    def __init__(self, data):
         self.input_buffer = bytearray(data)
         self.output_buffer = BytesIO()
         self.output_buffer_len = 0
@@ -69,7 +70,7 @@ class Prs:
 
         for i in bits:
             control_byte >>= 1
-            control_byte |= (i << 7)
+            control_byte |= i << 7
             bit_position += 1
 
             if bit_position >= 8:
@@ -92,12 +93,16 @@ class Prs:
             # Mode 2: Long copy, short size.
             if size <= 9:
                 self.put_control_bit(0)
-                self.current_data.extend([((offset << 3) & 248) | ((size - 2) & 7),((offset >> 5) & 255)])
+                self.current_data.extend(
+                    [((offset << 3) & 248) | ((size - 2) & 7), ((offset >> 5) & 255)]
+                )
                 self.put_control_bit(1)
             # Mode 3: Long copy, long size.
             else:
                 self.put_control_bit(0)
-                self.current_data.extend([((offset << 3) & 248),((offset >> 5) & 255),(size - 1)])
+                self.current_data.extend(
+                    [((offset << 3) & 248), ((offset >> 5) & 255), (size - 1)]
+                )
                 self.put_control_bit(1)
 
     def flush(self, control_byte):
@@ -108,16 +113,27 @@ class Prs:
         output_buffer.write(self.current_data)
         self.output_buffer_len += len(self.current_data) + 1
 
-    def check(self,offset=0):
-        if self.current_lookbehind_length <= 256 and (self.position + self.current_lookbehind_length + offset) <= self.input_length and \
-            self.input_dict[self.current_lookbehind_position + self.current_lookbehind_length + offset - 1] == self.input_dict[self.position + self.current_lookbehind_length + offset - 1]:
+    def check(self, offset=0):
+        if (
+            self.current_lookbehind_length <= 256
+            and (self.position + self.current_lookbehind_length + offset)
+            <= self.input_length
+            and self.input_dict[
+                self.current_lookbehind_position
+                + self.current_lookbehind_length
+                + offset
+                - 1
+            ]
+            == self.input_dict[
+                self.position + self.current_lookbehind_length + offset - 1
+            ]
+        ):
             self.current_lookbehind_length += 1
             return 1
         else:
             return 0
 
-    def lookbehind(self, position, byte_pos_cache, window, input_dict,
-                   input_length):
+    def lookbehind(self, position, byte_pos_cache, window, input_dict, input_length):
         """Scan the input_buffer in reverse to determine lookbehind offset and length."""
         lookbehind_offset = 0
         lookbehind_length = 0
@@ -131,19 +147,23 @@ class Prs:
 
             if position + 2 < input_length:
                 byte3 = input_dict[position + 2]
-                byte_position_cache_keys.append((
-                    current_byte,
-                    byte2,
-                    byte3,
-                ))
-
-                if position + 3 < input_length:
-                    byte_position_cache_keys.append((
+                byte_position_cache_keys.append(
+                    (
                         current_byte,
                         byte2,
                         byte3,
-                        input_dict[position + 3],
-                    ))
+                    )
+                )
+
+                if position + 3 < input_length:
+                    byte_position_cache_keys.append(
+                        (
+                            current_byte,
+                            byte2,
+                            byte3,
+                            input_dict[position + 3],
+                        )
+                    )
 
         seen_positions = set()
 
@@ -192,10 +212,16 @@ class Prs:
 
                 # ChipX86: Update: Slight change to ordering of checks. The <= 256
                 #          is rarely the limiting factor, so do it last.
-                while (position + current_lookbehind_length <= input_length and
-                       (input_dict[position + current_lookbehind_length - 1] ==
-                        input_dict[current_lookbehind_position + current_lookbehind_length - 1]) and
-                       current_lookbehind_length <= 256):
+                while (
+                    position + current_lookbehind_length <= input_length
+                    and (
+                        input_dict[position + current_lookbehind_length - 1]
+                        == input_dict[
+                            current_lookbehind_position + current_lookbehind_length - 1
+                        ]
+                    )
+                    and current_lookbehind_length <= 256
+                ):
                     current_lookbehind_length += 1
 
                 current_lookbehind_length -= 1
@@ -211,10 +237,13 @@ class Prs:
                 #          code does not. With this change, we get
                 #          different output, but I save 2 more seconds
                 #          locally. Would need to verify the final output.
-                if (current_lookbehind_length > lookbehind_length and
-                    (current_lookbehind_length >= 3 or
-                     (current_lookbehind_length >= 2 and
-                      current_lookbehind_position - position >= -256))):
+                if current_lookbehind_length > lookbehind_length and (
+                    current_lookbehind_length >= 3
+                    or (
+                        current_lookbehind_length >= 2
+                        and current_lookbehind_position - position >= -256
+                    )
+                ):
                     lookbehind_offset = current_lookbehind_position - position
                     lookbehind_length = current_lookbehind_length
 
@@ -280,7 +309,8 @@ class Prs:
                 byte_pos_cache=byte_pos_cache,
                 window=window,
                 input_dict=input_dict,
-                input_length=input_length)
+                input_length=input_length,
+            )
 
             # Mode 0: Direct single byte read.
             if lookbehind_length == 0:
@@ -298,12 +328,12 @@ class Prs:
             self.flush((self.control_byte << self.bit_position) >> 8)
 
         output_buffer = self.output_buffer
-        output_buffer.write(b'\0\0')
+        output_buffer.write(b"\0\0")
         output_buffer_len = self.output_buffer_len + 2
 
         while True:
             if output_buffer_len % 4 != 0:
-                output_buffer.write(b'\0')
+                output_buffer.write(b"\0")
                 output_buffer_len += 1
             else:
                 break
@@ -311,12 +341,14 @@ class Prs:
         self.output_length = output_buffer_len
         self.padded_length = self.output_length + 8
 
-        output_buffer.write(bytes([67, 80, 82, 83, 0, 0, 0, 0, 69, 79, 70, 67, 0, 0, 0, 0])) # Footer: CPRS....EOFC....
+        output_buffer.write(
+            bytes([67, 80, 82, 83, 0, 0, 0, 0, 69, 79, 70, 67, 0, 0, 0, 0])
+        )  # Footer: CPRS....EOFC....
 
         return output_buffer.getvalue()
 
     def decompress(self):
-        input_length = struct.unpack("<I",self.input_buffer[12:16])[0]
+        input_length = struct.unpack("<I", self.input_buffer[12:16])[0]
         self.uncompressed_size = self.input_buffer[8:12]
         output_buffer = self.output_buffer
 
@@ -331,7 +363,6 @@ class Prs:
 
         self.current_byte = self.input_data.read(1)
         while self.input_data.tell() < input_length:
-
             if self.get_control_bit() != 0:
                 output_buffer.write(self.input_data.read(1))
                 continue
@@ -358,7 +389,7 @@ class Prs:
                 lookbehind_offset = ord(self.input_data.read(1)) | -256
                 lookbehind_length += 2
 
-            for _ in range(0,lookbehind_length):
+            for _ in range(0, lookbehind_length):
                 write_position = output_buffer.tell()
                 output_buffer.seek(write_position + lookbehind_offset)
                 byte = output_buffer.read(1)
@@ -389,11 +420,15 @@ def compress(input_file):
     compressed_data = input_dict.compress()
 
     # The header of the output includes the padded length, input length, and unpadded length.
-    output_data = b''.join([input_dict.signature,
-                            struct.pack("<I",input_dict.padded_length),
-                            struct.pack("<I",input_dict.input_length),
-                            struct.pack("<I",input_dict.output_length),
-                            compressed_data])
+    output_data = b"".join(
+        [
+            input_dict.signature,
+            struct.pack("<I", input_dict.padded_length),
+            struct.pack("<I", input_dict.input_length),
+            struct.pack("<I", input_dict.output_length),
+            compressed_data,
+        ]
+    )
 
     return output_data
 
@@ -407,8 +442,7 @@ def main():
     start_time = time.time()
 
     if len(sys.argv) >= 4:
-
-        with open(sys.argv[2],"rb") as input_file:
+        with open(sys.argv[2], "rb") as input_file:
             input_data = input_file.read()
             if len(input_data) == 0:
                 print(f"{input_file}: Unable to read all bytes.")
@@ -420,12 +454,12 @@ def main():
             output_data = decompress(input_data)
 
         if output_data:
-            with open(sys.argv[3],"wb") as output_file:
+            with open(sys.argv[3], "wb") as output_file:
                 output_file.write(output_data)
                 print(f"Wrote {len(output_data)} bytes.")
                 return
 
-        print("Finished in ",time.time() - start_time,"seconds.")
+        print("Finished in ", time.time() - start_time, "seconds.")
 
     else:
         print("Usage: [-c] [-d] INPUT_FILE OUTPUT_FILE")
