@@ -21,10 +21,8 @@ def main():
     files_written = 0
     backup_files_written = 0
 
-    if not os.path.exists(translate_path):
-        os.makedirs(translate_path)
-    if not os.path.exists(backups_path):
-        os.makedirs(backups_path)
+    os.makedirs(translate_path, exist_ok=True)
+    os.makedirs(backups_path, exist_ok=True)
 
     for file in [i for i in os.listdir(source_path) if i.lower().endswith((".lip"))]:
         # If a CSV for the file already exists, do not process.

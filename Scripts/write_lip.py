@@ -163,7 +163,7 @@ def main():
         print(f"\n{str(files)} file(s) written to {output_path}.")
 
         if warnings > 0:
-            print(f"{str(warnings)} warning(s) raised. See output for details.")
+            print(f"\n{str(warnings)} warning(s) raised. See output for details.")
 
 
 if __name__ == "__main__":

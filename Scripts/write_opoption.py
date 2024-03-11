@@ -16,8 +16,7 @@ output_path = os.path.join(path, "output")
 
 
 def main():
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    os.makedirs(output_path, exist_ok=True)
 
     # List containing: file name, location of offset table, number of bytes between offset table and string table, number of indexes.
     op_files = [

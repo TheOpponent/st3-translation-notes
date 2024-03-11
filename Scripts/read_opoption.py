@@ -27,8 +27,7 @@ def main():
         ["OpSelectVm.bin", 0x7CB3, 11],
     ]
 
-    if not os.path.exists(translate_path):
-        os.makedirs(translate_path)
+    os.makedirs(translate_path, exist_ok=True)
 
     for filename, string_table, strings in op_files:
         # If a CSV for the file already exists, do not process.

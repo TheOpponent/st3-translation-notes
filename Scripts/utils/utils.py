@@ -269,17 +269,17 @@ def linebreak(
     if rows == row_limit and current_length > last_row_length_limit:
         if filename is not None and line_id is not None:
             print(
-                f"WARNING: Last row limit overflow in {filename} at line {line_id}: {output}"
+                f"Warning: Last row limit overflow in {filename} at line {line_id}: {output}"
             )
         else:
-            print(f"WARNING: Last row limit overflow: {output}")
+            print(f"Warning: Last row limit overflow: {output}")
         warnings += 1
 
     if rows > row_limit:
-        if line_id is not None:
-            print(f"WARNING: Line break overflow at line {line_id}: {output}")
+        if filename is not None and line_id is not None:
+            print(f"Warning: Line break overflow in {filename} at line {line_id}: {output}")
         else:
-            print(f"WARNING: Line break overflow: {output}")
+            print(f"Warning: Line break overflow: {output}")
         warnings += 1
 
     return (output, rows, warnings)

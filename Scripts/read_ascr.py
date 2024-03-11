@@ -1,7 +1,10 @@
 # Based on the scripts from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695 by ZetpeR xax007@yandex.ru.
 #
-# This script reads compressed SBX files and uncompressed SBN files in the 'source' subdirectory.
-# It outputs CSV files in the 'translate' and 'subroutine' subdirectories, using pipe characters | as delimiters.
+# When run without arguments, this script reads compressed SBX files and 
+# uncompressed SBN and ASCR files in the 'source' subdirectory, recursively.
+# Otherwise, SBX, SBN, and ASCR files are expected as arguments.
+# It outputs CSV files in the 'translate' and 'subroutine' subdirectories, 
+# using pipe characters | as delimiters.
 #
 # Decompressed SBX files are saved in the 'source/sbxu' subdirectory with a SBXU extension.
 # These files are required for repacking the translated scripts and recompression to SBX.
@@ -28,23 +31,26 @@ def main():
     translate_csv_files_written = 0
     backup_files_written = 0
     subroutine_files_written = 0
+    warnings = 0
     errors = 0
 
-    if not os.path.exists(source_path):
-        os.makedirs(source_path)
-        print(f"Place SBX and SBN script files in {source_path}.")
-        return
+    os.makedirs(source_path, exist_ok=True)
 
-    if not os.path.exists(translate_path):
-        os.makedirs(translate_path)
-    if not os.path.exists(backups_path):
-        os.makedirs(backups_path)
-    if not os.path.exists(subroutines_path):
-        os.makedirs(subroutines_path)
+    if len(sys.argv) > 1:
+        file_list = sys.argv[1:]
+    else:
+        file_list = [
+            i for i in os.listdir(source_path) if i.lower().endswith((".sbx", ".sbn"))
+        ]
+        if len(file_list) == 0:
+            print(f"Place SBX and SBN script files in {source_path}.")
+            return
 
-    for file in [
-        i for i in os.listdir(source_path) if i.lower().endswith((".sbx", ".sbn"))
-    ]:
+    os.makedirs(translate_path, exist_ok=True)
+    os.makedirs(backups_path, exist_ok=True)
+    os.makedirs(subroutines_path, exist_ok=True)
+
+    for file in file_list:
         translate_csv_file = os.path.join(translate_path, file + ".csv")
 
         # If a CSV for the file already exists, do not process.
@@ -56,12 +62,12 @@ def main():
             # Read files in working directory. SBX files must be decompressed first.
             # After decompressing the SBX file, save it in the source subdirectory for later repacking.
             if file.lower().endswith((".sbx")):
-                if not os.path.exists(sbxu_path):
-                    os.makedirs(sbxu_path)
+                os.makedirs(sbxu_path, exist_ok=True)
 
                 sbxu_file = os.path.join(sbxu_path, os.path.splitext(file)[0]) + ".SBXU"
                 if os.path.exists(sbxu_file):
-                    print(f"{sbxu_file} already exists; not overwriting.")
+                    print(f"Warning: {sbxu_file} already exists; not overwriting.")
+                    warnings += 1
                     continue
 
                 input_data = prs.decompress(f.read())
@@ -109,7 +115,9 @@ def main():
         input_data.close()
 
     if translate_csv_files_written > 0:
-        print(f"\n{translate_csv_files_written} CSV file(s) written to {translate_path}.")
+        print(
+            f"\n{translate_csv_files_written} CSV file(s) written to {translate_path}."
+        )
 
     else:
         print("No files written.")
@@ -121,8 +129,10 @@ def main():
     if subroutine_files_written > 0:
         print(f"{subroutine_files_written} CSV file(s) written to {subroutines_path}.")
 
-    if errors > 0:
-        print(f"\n{errors} error(s) during processing. See output for details.")
+    if errors > 0 or warnings > 0:
+        print(
+            f"\n{errors} error(s) and {warnings} warning(s) raised. See output for details."
+        )
 
 
 if __name__ == "__main__":

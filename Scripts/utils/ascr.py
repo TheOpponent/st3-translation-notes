@@ -4,9 +4,11 @@
 # Rows for the strings contain: string offset, string type ("code", "dialogue", or "lcd"), text converted to UTF-8.
 # Rows for subroutine data contain: four data values, data offset, subroutine name from strings, bytes.
 
+
 import re
 import struct
 from io import BytesIO
+
 from utils.utils import ascii_to_sjis, read_string
 
 KNOWN_SIGNATURES = [b"\xba\xaf\x55\xcc", b"\x24\xf7\x01\x65"]
@@ -16,8 +18,8 @@ class ParsingError(Exception):
     pass
 
 
-def read_ascr(data: BytesIO, filename=""):
-    """Parses a BytesIO stream containing an ASCR chunk. Strings and
+def read_ascr(data: BytesIO, filename="") -> tuple[list,list]:
+    """Parses a BytesIO stream containing an ASCR chunk. Text and
     subroutine data are processed into strings.
 
     Returns a tuple containing a list of text strings and a list of
@@ -123,18 +125,20 @@ def read_ascr(data: BytesIO, filename=""):
 
 def write_ascr(
     ascr_data: BytesIO, strings: list, add_header=True, filename: str = None
-) -> bytearray:
+) -> tuple[bytearray, int]:
     """Given a source ASCR data chunk, create a new chunk from a list
     of strings injected after the subroutine data. Offsets are
     recalculated, and all other data is retained.
 
-    If add_header is true, also add the ASCR header and size
-    information. If the chunk will be compressed, this should be false.
+    If add_header is true, also add a header with ASCR signature and size
+    information and the EOFC footer. If the chunk will be compressed,
+    this should be false.
 
     filename is a string, passed to the ascii_to_sjis function for
     informational purposes when a linebreak results in overflow.
 
-    Returns a bytearray containing the new ASCR chunk.
+    Returns a tuple containing bytearray containing the new ASCR chunk and
+    the number of warnings returned by ascii_to_sjis.
     Raises ParsingError if either the ASCR or strings input is
     invalid."""
 
@@ -146,7 +150,7 @@ def write_ascr(
         raise ParsingError("Not an ASCR chunk.")
 
     if header[8:12] not in KNOWN_SIGNATURES:
-        raise ParsingError("Header not recognized: {header[8:12].hex()}")
+        raise ParsingError(f"Header not recognized: {header[8:12].hex()}")
 
     # Set address and limits.
     ascr_data.seek(12)
@@ -205,7 +209,12 @@ def write_ascr(
             break
 
     if add_header:
-        output_binary = b"ASCR" + struct.pack("<I", len(new_data)) + new_data
+        output_binary = (
+            b"ASCR"
+            + struct.pack("<I", len(new_data))
+            + new_data
+            + b"EOFC\x00\x00\x00\x00"
+        )
     else:
         output_binary = new_data
 
