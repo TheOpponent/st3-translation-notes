@@ -190,7 +190,10 @@ def main():
 
     else:
         print(
-            "Specify input file(s) containing BPV1 data.\n\nArguments:\n-c: Input is PRS-compressed BPV1 data.\n-q: Quiet mode -- do not print information on written files."
+            "Specify input file(s) containing BPV1 data.\n",
+            "Arguments:",
+            "-c: Input is PRS-compressed BPV1 data.",
+            "-q: Quiet mode -- do not print information on written files."
         )
 
 
