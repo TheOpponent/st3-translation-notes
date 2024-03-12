@@ -1,7 +1,10 @@
 .vscode/
 backups/
+esm/
 output/
 source/
+subroutines/
 translate/
 __pycache__/
 .venv/
+*.code-workspace
