@@ -293,25 +293,29 @@ class MainFrame(wx.Frame):
         if image_filename != "":
             with Image.open(image_filename) as image:
                 if image.height != self.tile_size:
-                    wx.MessageDialog(
+                    dlg = wx.MessageDialog(self,
                         f"Image must have a height of {self.tile_size} pixels.",
                         "Invalid Image",
                         wx.OK | wx.ICON_ERROR,
                     )
+                    dlg.ShowModal()
                     return
                 if image.width % self.tile_size != 0:
-                    wx.MessageDialog(
+                    dlg = wx.MessageDialog(self,
                         f"Image must have a width divisible by {self.tile_size} pixels.",
                         "Invalid Image",
                         wx.OK | wx.ICON_ERROR,
                     )
+                    dlg.ShowModal()
                     return
                 if image.mode != "RGB":
-                    wx.MessageDialog(
+                    dlg = wx.MessageDialog(self,
                         "Image must be RGB with 8 bits per channel and no transparency.",
                         "Invalid Image",
                         wx.OK | wx.ICON_ERROR,
                     )
+                    dlg.ShowModal()
+                    return
 
                 # Divide input image into square tiles.
                 for x in range(0, image.width // self.tile_size):
