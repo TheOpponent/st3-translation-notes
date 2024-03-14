@@ -37,6 +37,7 @@ def main():
         with open(os.path.join(source_path, input_file), "rb") as esm_file:
             while True:
                 buffer = bytearray()
+                esm_chunk_offset = hex(esm_file.tell())
                 header = esm_file.read(4)
                 size_info = esm_file.read(4)
 
@@ -61,12 +62,13 @@ def main():
                 output_file = os.path.join(extracted_path, output_filename)
                 with open(output_file, "wb") as file:
                     file.write(buffer)
+                    
                     print(
-                        f"{output_filename}: {header.decode()} chunk at {hex(esm_file.tell())}. Length: {len(buffer)} bytes."
+                        f"{output_filename}: {header.decode()} chunk at {esm_chunk_offset}. Length: {len(buffer)} bytes."
                     )
 
                 esm_stats.append(
-                    (chunk_number, hex(esm_file.tell()), header.decode(), len(buffer))
+                    (str(chunk_number).zfill(3), esm_chunk_offset, header.decode(), len(buffer))
                 )
 
                 if len(buffer) < size:
@@ -74,7 +76,7 @@ def main():
 
                 chunk_number += 1
 
-        print(f"{input_file}: Wrote {str(chunk_number + 1)} files.")
+        print(f"{input_file}: Wrote {chunk_number} files.")
 
         # Write stats text file.
         stats_file_name = os.path.join(extracted_path, input_file + ".txt")
