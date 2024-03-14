@@ -51,6 +51,10 @@ def decompress_bpv1(bpv1_file):
                     if bpv1_decompressed is None:
                         continue
 
+                    with open(f"{bpv1_file} + .BP1U") as bpv1_decompressed_file:
+                        bpv1_decompressed_file.write(bpv1_decompressed)
+                        print(f"Wrote uncompressed file to {bpv1_decompressed_file.name}")
+
                     with io.BytesIO(bpv1_decompressed) as bpv1_stream:
                         files_written += extract_bpv1(
                             bpv1_file, bpv1_stream, filename_offset=bpv1_pos
@@ -61,7 +65,7 @@ def decompress_bpv1(bpv1_file):
                     break
 
 
-def search_bpv1(bpv1_file):
+def search_bpv1(bpv1_file: str):
     """Open a file containing uncompressed BPV1 chunks."""
 
     files_written = 0
@@ -79,7 +83,7 @@ def search_bpv1(bpv1_file):
                     break
 
 
-def extract_bpv1(bpv1_file, mm, bpv1_pos=0, filename_offset=0):
+def extract_bpv1(bpv1_file: str, mm: mmap, bpv1_pos=0, filename_offset=0):
     """Extract BPV1 subtextures from bpv1_file opened at memory map mm, at bpv1_pos.
     filename_offset is added to the address in the filename and is specified by
     decompress_bpv1.
@@ -141,7 +145,7 @@ def extract_bpv1(bpv1_file, mm, bpv1_pos=0, filename_offset=0):
 
         chunk_size = struct.pack("<I", len(texture_data) + 8)
 
-        filename = f"_{hex(bpv1_pos + filename_offset)}_{subtextures_written}"
+        filename = f"_{hex(bpv1_pos + filename_offset)}_{str(subtextures_written).zfill(3)}"
 
         output = (
             b"PVRT"
