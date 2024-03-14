@@ -123,6 +123,8 @@ def repack_bpv1(
                 png_file,
                 *PVR_DATA_FORMATS[pvr_data_format],
                 *PVR_PIXEL_FORMATS[pvr_pixel_format],
+                "-op",
+                os.path.dirname(pvr_file)
             ]
             subprocess.run(png2pvr_args, shell=True)
 
