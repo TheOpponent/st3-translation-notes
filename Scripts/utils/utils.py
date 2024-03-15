@@ -109,7 +109,7 @@ def ascii_to_sjis(
         "ù": 0x82BC,
         "û": 0x82BD,
         "ü": 0x82BE,
-        "ß": 0x82BF,
+        "ß": 0x82BF,  # Reni Milchstraße
         " ": 0x8140,
         ".": 0x8144,
         ",": 0x8143,
@@ -239,27 +239,27 @@ def linebreak(
     warnings = 0
 
     # Split input string into an enumerated list of each word. Forced line breaks are split into their own word.
-    input_str = list(
-        enumerate(input_str.replace(r"\n", " \\ ").replace("//", " \\ ").split(" "), 1)
-    )
+    input_str = [i for i in input_str.replace(r"\n", " \\ ").replace("//", " \\ ").split(" ") if i != ""]
 
-    for i in input_str:
+    for i in enumerate(input_str):
+        word = i[1]
+        # Do not count control code sequences in word length.
         word_length = len(i[1]) - sum(
-            [len(p) for p in re.findall("{[a-zA-Z0-9,@!=]+}", i[1])]
-        )  # Do not count control code sequences in word length.
+            [len(p) for p in re.findall("{[a-zA-Z0-9,@!=]+}", word)]
+        )
 
         # Insert word that is not a forced line break.
-        if i[1] != "\\":
-            # Do not break line if the last character is a terminal punctuation mark.
+        if word != "\\":
             if current_length + word_length + 1 <= length_limit:
-                output += i[1]
+                output += word
                 current_length += word_length + 1
             else:
-                if i[1][-1] in [".",",","?","!","\""]:
-                    output = output + i[1] + "\\"
+                # Do not break line if the length exactly matches the limit.
+                if current_length + word_length == length_limit:
+                    output = output + word + "\\"
                     current_length = 0
                 else:
-                    output = output.rstrip() + "\\" + i[1]
+                    output = output.rstrip() + "\\" + word
                     current_length = word_length
                 rows += 1
             # Add a space if there are more words remaining and the last character in the buffer is not "\", or break otherwise.
@@ -269,6 +269,9 @@ def linebreak(
             else:
                 break
         else:
+            # Attempt to avoid a line break on an empty line.
+            if current_length == 0:
+                continue
             output = output.rstrip() + "\\"  # Remove space inserted by previous word.
             rows += 1
             current_length = 0
@@ -284,7 +287,9 @@ def linebreak(
 
     if rows > row_limit:
         if filename is not None and line_id is not None:
-            print(f"Warning: Line break overflow in {filename} at line {line_id}: {output}")
+            print(
+                f"Warning: Line break overflow in {filename} at line {line_id}: {output}"
+            )
         else:
             print(f"Warning: Line break overflow: {output}")
         warnings += 1
