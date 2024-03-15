@@ -250,16 +250,22 @@ def linebreak(
 
         # Insert word that is not a forced line break.
         if i[1] != "\\":
+            # Do not break line if the last character is a terminal punctuation mark.
             if current_length + word_length + 1 <= length_limit:
                 output += i[1]
                 current_length += word_length + 1
             else:
-                output = output.rstrip() + "\\" + i[1]
+                if i[1][-1] in [".",",","?","!","\""]:
+                    output = output + i[1] + "\\"
+                    current_length = 0
+                else:
+                    output = output.rstrip() + "\\" + i[1]
+                    current_length = word_length
                 rows += 1
-                current_length = word_length
-            # Add a space if there are more words remaining, or break otherwise.
+            # Add a space if there are more words remaining and the last character in the buffer is not "\", or break otherwise.
             if i[0] < len(input_str):
-                output += " "
+                if output[-1] != "\\":
+                    output += " "
             else:
                 break
         else:
