@@ -1,7 +1,7 @@
 # Based on the scripts from http://chief-net.ru/forum/topic.php?forum=2&topic=77&postid=1527319695#1527319695 by ZetpeR xax007@yandex.ru.
 #
-# When run without arguments, this script reads compressed SBX files and 
-# uncompressed SBN and ASCR files in the 'source' subdirectory, recursively.
+# When run without arguments, this script reads compressed SBX files,  
+# uncompressed SBN, and ASCR files in the 'source' subdirectory, recursively.
 # Otherwise, SBX, SBN, and ASCR files are expected as arguments.
 # It outputs CSV files in the 'translate' and 'subroutine' subdirectories, 
 # using pipe characters | as delimiters.
@@ -16,8 +16,8 @@ import sys
 from io import BytesIO
 from shutil import copyfile
 
-from utils import prs
-from utils.ascr import ParsingError, read_ascr
+from utils.prs import decompress, PRSError
+from utils.ascr import ASCRError, read_ascr
 
 
 def main():
@@ -43,7 +43,7 @@ def main():
             i for i in os.listdir(source_path) if i.lower().endswith((".sbx", ".sbn"))
         ]
         if len(file_list) == 0:
-            print(f"Place SBX and SBN script files in {source_path}.")
+            print(f"Place SBX, SBN, and ASCR script files in {source_path}.")
             return
 
     os.makedirs(translate_path, exist_ok=True)
@@ -55,7 +55,8 @@ def main():
 
         # If a CSV for the file already exists, do not process.
         if os.path.exists(translate_csv_file):
-            print(f"{translate_csv_file} already exists; not overwriting.")
+            print(f"[Warning] {translate_csv_file} already exists; not overwriting.")
+            warnings += 1
             continue
 
         with open(os.path.join(source_path, file), "rb") as f:
@@ -66,14 +67,20 @@ def main():
 
                 sbxu_file = os.path.join(sbxu_path, os.path.splitext(file)[0]) + ".SBXU"
                 if os.path.exists(sbxu_file):
-                    print(f"Warning: {sbxu_file} already exists; not overwriting.")
+                    print(f"[Warning] {sbxu_file} already exists; not overwriting.")
                     warnings += 1
                     continue
 
-                input_data = prs.decompress(f.read())
-                with open(sbxu_file, "wb") as file:
-                    file.write(input_data)
-                    print(f"Wrote uncompressed SBX file to {file.name}.")
+                try:
+                    input_data = decompress(f.read())
+                except PRSError as e:
+                    print(f"[Error] {file}: e")
+                    errors += 1
+                    continue
+
+                with open(sbxu_file, "wb") as sbxu_out_file:
+                    sbxu_out_file.write(input_data)
+                    print(f"{file}: Wrote uncompressed SBX file to {sbxu_file}.")
 
                 input_data = BytesIO(input_data)
 
@@ -84,8 +91,8 @@ def main():
 
             try:
                 strings, subroutines = read_ascr(input_data, file)
-            except ParsingError as e:
-                print(f"Error: {f}: {e}")
+            except ASCRError as e:
+                print(f"[Error] {f}: {e}")
                 errors += 1
                 input_data.close()
                 continue
@@ -121,10 +128,9 @@ def main():
 
     else:
         print("No files written.")
-        return
 
     if backup_files_written > 0:
-        print(f"{translate_csv_files_written} CSV file(s) written to {backups_path}.")
+        print(f"{backup_files_written} CSV file(s) written to {backups_path}.")
 
     if subroutine_files_written > 0:
         print(f"{subroutine_files_written} CSV file(s) written to {subroutines_path}.")

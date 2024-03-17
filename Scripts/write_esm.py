@@ -4,7 +4,7 @@ import re
 import struct
 import sys
 
-from utils.utils import ascii_to_sjis
+from utils.ascr import ascii_to_sjis, ASCRError
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path,"translate")
@@ -27,9 +27,11 @@ def main():
         esm_file.seek(8)
     
         string_length = esm_file.read(4)
-        string_location = struct.unpack("<I",esm_file.read(4))[0]        # Location of table of offsets for text area at the end of the file, + 8.
-        binary_length = esm_file.read(4)                             
-        binary_location = struct.unpack("<I",esm_file.read(4))[0]        # Location of table of offsets for binary data associated with subroutines, + 8.
+        # Location of table of offsets for text area at the end of the file, + 8.
+        string_location = struct.unpack("<I",esm_file.read(4))[0]        
+        binary_length = esm_file.read(4)                         
+        # Location of table of offsets for binary data associated with subroutines, + 8.    
+        binary_location = struct.unpack("<I",esm_file.read(4))[0]        
         value3 = esm_file.read(4)
         value4 = esm_file.read(4)
 
@@ -47,10 +49,13 @@ def main():
             for i in csv_file:
                 if re.fullmatch(r'[A-zÀ-ÿ0-9œ`~!@#$%^&*(){}_|+\-×÷=?;:<>°\'",.\[\]/—–‘’“”☆★ ]+',i[1],re.I):
                     # Only translate strings that contain only non-Japanese characters.
-                    line_encoded = ascii_to_sjis(i[1],line_id=i[0])
+                    try:
+                        line_encoded = ascii_to_sjis(i[1],line_id=i[0])
+                    except ASCRError as e:
+                        print(f"[Error] {e}")
                 else:
                     # Otherwise, assume string is unchanged Japanese text and encode as-is.
-                    line_encoded = i[1].encode(encoding="shift_jis_2004") + b'\x00'
+                    line_encoded = i[1].encode(encoding="shift_jis") + b'\x00'
 
                 # Pad to 4-byte alignment.
                 while len(line_encoded) % 4 != 0:

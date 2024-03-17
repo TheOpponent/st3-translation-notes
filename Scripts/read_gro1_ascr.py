@@ -16,7 +16,7 @@ import sys
 from io import BytesIO
 from shutil import copyfile
 
-from utils.ascr import ParsingError, read_ascr
+from utils.ascr import ASCRError, read_ascr
 
 
 def main():
@@ -134,13 +134,13 @@ def main():
                             ascr_data,
                             filename=f"{input_file} chunk {str(i[0]).zfill(3)}",
                         )
-                    except ParsingError as e:
-                        print(f"Error: {e}")
+                    except ASCRError as e:
+                        print(f"[Error] {e}")
                         errors += 1
                         continue
 
                     if os.path.exists(translate_csv_file):
-                        print(f"Warning: {translate_csv_file} already exists; not overwriting.")
+                        print(f"[Warning] {translate_csv_file} already exists; not overwriting.")
                         warnings += 1
                         continue
 
@@ -193,7 +193,6 @@ def main():
 
             else:
                 print(f"Notice: {input_file}: No files written.")
-                return
 
             if translate_csv_files_written > 0:
                 print(
@@ -215,7 +214,6 @@ def main():
 
     else:
         print("Notice: No files written.")
-        return
 
     if total_translate_csv_files_written > 0:
         print(f"{total_translate_csv_files_written} text CSV file(s) written.")

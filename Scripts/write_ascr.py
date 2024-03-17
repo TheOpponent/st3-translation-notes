@@ -13,8 +13,8 @@ import struct
 import sys
 from glob import glob
 
-from utils import prs
-from utils.ascr import ParsingError, write_ascr
+from utils.prs import compress, PRSError
+from utils.ascr import ASCRError, write_ascr
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path, "translate")
@@ -58,7 +58,7 @@ def main():
             )
             if not os.path.exists(source_file):
                 print(
-                    f"Error: SBXU file for {translate_file} not found in {sbxu_path}."
+                    f"[Error] {translate_file}: SBXU file not found in {sbxu_path}."
                 )
                 errors += 1
                 continue
@@ -74,15 +74,12 @@ def main():
                 )
             if not os.path.exists(source_file):
                 print(
-                    f"Error: Source file for {translate_file} not found in {source_path}."
+                    f"[Error] {translate_file}: Source file not found in {source_path}."
                 )
                 errors += 1
                 continue
             compressed = False
         else:
-            print(
-                f"Notice: Filename {translate_file} does not match an SBX, SBU, or ASCR filename pattern."
-            )
             continue
 
         with open(
@@ -99,15 +96,21 @@ def main():
                     )
                     # Add original header size of 8 to length of new ASCR data for
                     # uncompressed data size in PRS header.
-                    output = prs.compress(
-                        b"ASCR" + struct.pack("<I", len(new_ascr) + 8) + new_ascr
-                    )
+                    try:
+                        output = compress(
+                            b"ASCR" + struct.pack("<I", len(new_ascr) + 8) + new_ascr
+                        )
+                    except PRSError as e:
+                        print(f"[Error] {source_file}: {e}")
+                        errors += 1
+                        continue
+
                 elif compressed is False:
                     output, new_warnings = write_ascr(
                         ascr_data, strings, filename=translate_file
                     )
-            except ParsingError as e:
-                print(f"Error: {source_file}: {e}")
+            except ASCRError as e:
+                print(f"[Error] {source_file}: {e}")
                 errors += 1
                 continue
 

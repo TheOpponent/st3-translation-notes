@@ -8,7 +8,7 @@ import re
 import struct
 import sys
 
-from utils.utils import ascii_to_sjis
+from utils.ascr import ascii_to_sjis
 
 path = os.path.realpath(os.path.dirname(sys.argv[0]))
 translate_path = os.path.join(path, "translate")
@@ -112,7 +112,7 @@ def main():
                         # Otherwise, assume string is unchanged Japanese text and encode string and lip command sequence as-is.
                         else:
                             line_encoded = (
-                                i[2].encode(encoding="shift_jis_2004") + b"\x00"
+                                i[2].encode(encoding="shift_jis") + b"\x00"
                             )
                             cmd_sequence = i[4]
 

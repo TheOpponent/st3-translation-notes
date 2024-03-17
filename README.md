@@ -1,8 +1,8 @@
 Notes for the translation of the Dreamcast game _Sakura Taisen 3 - Paris wa Moeteiru ka_ (サクラ大戦3 〜巴里は燃えているか〜). Data formats used by the game are documented in the [wiki](https://github.com/TheOpponent/st3-translation-notes/wiki).
 
-The code in the Scripts directory is in the public domain, with the exception of the lib subdirectory. Python scripts require Python 3.7 or newer. Some scripts require [NumPy](https://pypi.org/project/numpy/) and/or [Pillow](https://python-pillow.org). 
+The code in the Scripts directory is in the public domain, with the exception of the lib subdirectory. Python scripts require Python 3.9 or newer. Some scripts require [NumPy](https://pypi.org/project/numpy/) and/or [Pillow](https://python-pillow.org). 
 
-Scripts that make use of PRS compression use a revised pure Python implementation written by [chipx86/Christian Hammond](https://github.com/chipx86) and included with permission, based on the [prs.net](https://github.com/FraGag/prs.net) library.
+Scripts that make use of PRS compression use [PRSTools by ToriningenGames](https://github.com/ToriningenGames/PRSTools), adapted into a library.
 
 Files in the External subdirectory are retained from external sources and kept for the sake of preservation and reference.
 

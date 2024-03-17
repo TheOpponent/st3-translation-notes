@@ -91,7 +91,7 @@ def repack_bpv1(
     textures_repacked = 0
     for bpv1_info, pvr_file, png_file in zip(bpv1_info_table, pvr_files, png_files):
         with open(pvr_file, "rb") as pvr:
-            if header := pvr.read(4) != b"PVRT":
+            if (header := pvr.read(4)) != b"PVRT":
                 raise ValueError(f"{pvr_file}: Header not recognized: {header}")
 
             pvr.seek(8)
