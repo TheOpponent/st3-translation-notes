@@ -347,6 +347,7 @@ void decompress(uint8_t *indata, int insize, struct compnode *nodes)
                 switch (nodes->type = getControl(&indata)) {
                         case m_direct :
                                 nodes->data = *indata++;
+                                i++;
                                 nodes++;
                                 break;
                         case m_short0 :
@@ -354,12 +355,14 @@ void decompress(uint8_t *indata, int insize, struct compnode *nodes)
                         case m_short2 :
                         case m_short3 :
                                 nodes->offset = *indata++;
+                                i++;
                                 nodes++;
                                 break;
                         case m_long :
                                 nodes->size = *indata & 0x07;
                                 nodes->offset = (*indata++ & 0xF8) >> 3;
                                 nodes->offset |= *indata++ << 5;
+                                i+=2;
                                 //Special detect for the end phrase
                                 if (!nodes->size && !nodes->offset) {
                                         nodes->size--;
