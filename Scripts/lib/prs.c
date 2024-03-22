@@ -342,6 +342,8 @@ enum mode getControl(uint8_t **indata)
 
 void decompress(uint8_t *indata, int insize, struct compnode *nodes)
 {
+        int foundEnd = 0;
+        uint8_t *start = indata;
         for (int i = 0; i < insize; i++) {
                 switch (nodes->type = getControl(&indata)) {
                         case m_direct :
@@ -361,7 +363,13 @@ void decompress(uint8_t *indata, int insize, struct compnode *nodes)
                                 nodes->offset |= *indata++ << 5;
                                 //Special detect for the end phrase
                                 if (!nodes->size && !nodes->offset) {
-                                        nodes->size--;
+                                        foundEnd = 1;
+                                        if (indata - start < insize) {
+                                                fprintf(stderr, "Warning: Extra input data found!\n");
+                                        }
+                                        //Escape this loop
+                                        i = insize;
+                                        break;
                                 }
                                 if (!nodes->size) {
                                         nodes->size = *indata++;
@@ -371,6 +379,12 @@ void decompress(uint8_t *indata, int insize, struct compnode *nodes)
                                 nodes++;
                                 break;
                 }
+        }
+        if (!foundEnd) {
+                fprintf(stderr, "Warning: Input not terminated correctly!\n");
+                nodes->type = m_long;
+                nodes->offset = 0;
+                nodes->size = 0;
         }
 }
 
