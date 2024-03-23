@@ -289,10 +289,14 @@ int prs_compress(uint8_t *indata, int insize, uint8_t **outdata) {
 
 // Decompression functions
 
-enum mode getControl(uint8_t **indata)
+enum mode getControl(uint8_t **indata, int reset)
 {
         static uint8_t control;
         static int bits = 0;
+        if (reset) {
+                bits = 0;
+                return m_none;
+        }
         if (!bits) {
                 control = **indata;
                 (*indata)++;
@@ -343,7 +347,7 @@ enum mode getControl(uint8_t **indata)
 void decompress(uint8_t *indata, int insize, struct compnode *nodes)
 {
         for (int i = 0; i < insize; i++) {
-                switch (nodes->type = getControl(&indata)) {
+                switch (nodes->type = getControl(&indata, 0)) {
                         case m_direct :
                                 nodes->data = *indata++;
                                 nodes++;
@@ -413,7 +417,8 @@ int prs_decompress(uint8_t *indata, int insize, uint8_t *outdata, int outsize) {
     if (!nodes) {
         return -1;
     }
-
+        
+    getControl(NULL, 1);
     decompress(indata, insize, nodes);
     *outdata = malloc(outsize);
     if (!*outdata) {
