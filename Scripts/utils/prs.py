@@ -21,16 +21,46 @@ else:
     print("Cannot determine platform.")
     exit(1)
 
+class Mode(c_int):
+    """ enum mode { m_none, m_direct, m_long, m_short0, m_short1, m_short2, m_short3, m_done };"""
+
+    m_none = 0
+    m_direct = 1
+    m_long = 2
+    m_short0 = 3
+    m_short1 = 4
+    m_short2 = 5
+    m_short3 = 6
+    m_done = 7
+
+
+class Nodes(Structure):
+    """ struct compnode {
+            enum mode type;
+            uint16_t offset;
+            uint16_t size;
+            uint8_t data;
+        };
+    """
+    _fields_ = [
+                    ("type",Mode),
+                    ("offset",c_uint16),
+                    ("size",c_uint16),
+                    ("data",c_uint8),
+                ]
+    
+    
 lib.prs_compress.argtypes = [
-    POINTER(c_char),
+    POINTER(c_uint8),
     c_int,
-    POINTER(POINTER(c_char)),
+    POINTER(POINTER(c_uint8)),
 ]
 lib.prs_compress.restype = c_int
 lib.prs_decompress.argtypes = [
-    POINTER(c_char),
+    POINTER(c_uint8),
     c_int,
-    POINTER(c_char),
+    POINTER(Nodes),
+    POINTER(c_uint8),
     c_int,
 ]
 lib.prs_decompress.restype = c_int
@@ -46,8 +76,8 @@ def compress(input_data: bytes):
 
     input_signature = input_data[0:4]
     uncompressed_length = len(input_data) - 8
-    uncompressed_data_array = create_string_buffer(input_data[8:])
-    compressed_data_ptr = POINTER(c_char)()
+    uncompressed_data_array = (c_uint8 * uncompressed_length)(*input_data[8:])
+    compressed_data_ptr = POINTER(c_uint8)()
 
     compressed_length = lib.prs_compress(
         uncompressed_data_array,
@@ -82,26 +112,30 @@ def decompress(input_data: bytes):
 
     input_signature = input_data[0:4]
     compressed_length = struct.unpack("<I", input_data[12:16])[0]
-    compressed_data_array = create_string_buffer(input_data[16:16 + compressed_length])
+    compressed_data_array = (c_uint8 * compressed_length)(*input_data[16:16 + compressed_length])
+    nodes = (Nodes * compressed_length)()
+    nodes_array = cast(nodes, POINTER(Nodes))
     decompressed_length = struct.unpack("<I", input_data[8:12])[0]
-    decompressed_data_array = create_string_buffer(decompressed_length)
+    decompressed_data_array = (c_uint8 * decompressed_length)()
 
     result = lib.prs_decompress(
         compressed_data_array,
         compressed_length,
+        nodes_array,
         decompressed_data_array,
         decompressed_length,
     )
 
     if result == 0:
-        decompressed_data = bytearray(
-            string_at(decompressed_data_array, decompressed_length)
-        )
+        decompressed_data = bytearray(decompressed_data_array)
 
         # The header of the output includes the padded length, input length, and unpadded length.
         output_data = bytearray(input_signature)
         output_data.extend(struct.pack("<I", decompressed_length))
         output_data.extend(decompressed_data)
+        del compressed_data_array
+        del decompressed_data_array
+        del nodes_array
         return output_data
     else:
         raise PRSError("PRS decompression failed.")

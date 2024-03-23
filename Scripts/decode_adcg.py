@@ -158,7 +158,8 @@ def extract_adcg(input_file, offset=0, end=-1):
                                 break
 
                         try:
-                            adcg_uncompressed = bytes(prs.decompress(adcg_prs_data))
+                            # uncompressed_size = struct.unpack("<I",adcg_prs_data[8:12])[0]
+                            adcg_uncompressed = prs.decompress(bytes(adcg_prs_data))
                         except Exception as e:
                             print(e)
                             print(

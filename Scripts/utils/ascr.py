@@ -177,7 +177,7 @@ def ascii_to_sjis(
     warnings = 0
 
     if break_lines:
-        input_str, _, warnings = linebreak(
+        input_str, _, warnings = _linebreak(
             input_str,
             line_id=kwargs.get("line_id", None),
             filename=kwargs.get("filename", None),
@@ -219,7 +219,7 @@ def ascii_to_sjis(
     return (output, warnings)
 
 
-def linebreak(
+def _linebreak(
     input_str,
     filename=None,
     line_id=None,

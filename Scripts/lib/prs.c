@@ -342,6 +342,8 @@ enum mode getControl(uint8_t **indata)
 
 void decompress(uint8_t *indata, int insize, struct compnode *nodes)
 {
+        int foundEnd = 0;
+        uint8_t *start = indata;
         for (int i = 0; i < insize; i++) {
                 switch (nodes->type = getControl(&indata)) {
                         case m_direct :
@@ -361,7 +363,13 @@ void decompress(uint8_t *indata, int insize, struct compnode *nodes)
                                 nodes->offset |= *indata++ << 5;
                                 //Special detect for the end phrase
                                 if (!nodes->size && !nodes->offset) {
-                                        nodes->size--;
+                                        foundEnd = 1;
+                                        if (indata - start < insize) {
+                                                fprintf(stderr, "Warning: Extra input data found!\n");
+                                        }
+                                        //Escape this loop
+                                        i = insize;
+                                        break;
                                 }
                                 if (!nodes->size) {
                                         nodes->size = *indata++;
@@ -372,9 +380,15 @@ void decompress(uint8_t *indata, int insize, struct compnode *nodes)
                                 break;
                 }
         }
+        if (!foundEnd) {
+                fprintf(stderr, "Warning: Input not terminated correctly!\n");
+                nodes->type = m_long;
+                nodes->offset = 0;
+                nodes->size = 0;
+        }
 }
 
-int decompress_store(uint8_t *data, struct compnode *nodes)
+void decompress_store(uint8_t *data, struct compnode *nodes)
 {
         int size;
         uint8_t *start = data;
@@ -405,23 +419,23 @@ int decompress_store(uint8_t *data, struct compnode *nodes)
                                 break;
                 }
         }
-        return data - start;
 }
 
-int prs_decompress(uint8_t *indata, int insize, uint8_t *outdata, int outsize) {
-    struct compnode *nodes = malloc(sizeof(*nodes) * insize);
-    if (!nodes) {
-        return -1;
-    }
+int prs_decompress(uint8_t *indata, int insize, struct compnode *nodes, uint8_t *outdata, int outsize) {
+//     struct compnode *nodes = malloc(sizeof(*nodes) * insize);
+//     if (!nodes) {
+//         return -1;
+//     }
 
+    printf("Decompressing\n");
     decompress(indata, insize, nodes);
-    *outdata = malloc(outsize);
-    if (!*outdata) {
-        free(nodes);
+    if (!outdata) {
+        // free(nodes);
         return -1;
     }
-
+    printf("Storing\n");
     decompress_store(outdata, nodes);
-    free(nodes);
+//     printf("free(nodes);\n");
+//     free(nodes);
     return 0;
 }
