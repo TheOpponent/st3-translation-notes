@@ -119,11 +119,15 @@ void compress(uint8_t *source, int insize, struct compnode *nodes)
         nodes[nodein].type = m_done;
 }
 
-void addControl(uint8_t **c, uint8_t **d, struct compnode *node)
+void addControl(uint8_t **c, uint8_t **d, struct compnode *node, int reset)
 {
         uint8_t *control = *c;
         uint8_t *data = *d;
         static int bits = 0;
+        if (reset) {
+                bits = 0;
+                return;
+        }
         switch (node->type) {
                 case m_direct :
                         if (!bits) {
@@ -260,10 +264,10 @@ int compress_store(uint8_t *data, struct compnode *nodes)
         uint8_t *control = data;
         //While there are nodes
         for (; nodes->type != m_done; nodes++) {
-                addControl(&control, &data, nodes);
+                addControl(&control, &data, nodes, );
         }
         //One more for the terminus
-        addControl(&control, &data, nodes);
+        addControl(&control, &data, nodes, 0);
         return data - start;
 }
 
@@ -273,6 +277,7 @@ int prs_compress(uint8_t *indata, int insize, uint8_t **outdata) {
         return -1;
     }
 
+    addControl(NULL, NULL, NULL, 1);
     compress(indata, insize, nodes);
     // Allocate memory for the output data with space to spare for safety.
     // If compressed data is larger than input, most likely compressed
@@ -289,10 +294,14 @@ int prs_compress(uint8_t *indata, int insize, uint8_t **outdata) {
 
 // Decompression functions
 
-enum mode getControl(uint8_t **indata)
+enum mode getControl(uint8_t **indata, int reset)
 {
         static uint8_t control;
         static int bits = 0;
+        if (reset) {
+                bits = 0;
+                return m_none;
+        }
         if (!bits) {
                 control = **indata;
                 (*indata)++;
@@ -343,7 +352,7 @@ enum mode getControl(uint8_t **indata)
 void decompress(uint8_t *indata, int insize, struct compnode *nodes)
 {
         for (int i = 0; i < insize; i++) {
-                switch (nodes->type = getControl(&indata)) {
+                switch (nodes->type = getControl(&indata, 0)) {
                         case m_direct :
                                 nodes->data = *indata++;
                                 nodes++;
@@ -413,7 +422,8 @@ int prs_decompress(uint8_t *indata, int insize, uint8_t *outdata, int outsize) {
     if (!nodes) {
         return -1;
     }
-
+        
+    getControl(NULL, 1);
     decompress(indata, insize, nodes);
     *outdata = malloc(outsize);
     if (!*outdata) {
