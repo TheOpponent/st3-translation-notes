@@ -264,7 +264,7 @@ int compress_store(uint8_t *data, struct compnode *nodes)
         uint8_t *control = data;
         //While there are nodes
         for (; nodes->type != m_done; nodes++) {
-                addControl(&control, &data, nodes, );
+                addControl(&control, &data, nodes, 0);
         }
         //One more for the terminus
         addControl(&control, &data, nodes, 0);
