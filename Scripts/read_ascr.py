@@ -74,7 +74,7 @@ def main():
                 try:
                     input_data = decompress(f.read())
                 except PRSError as e:
-                    print(f"[Error] {file}: e")
+                    print(f"[Error] {file}: {e}")
                     errors += 1
                     continue
 
