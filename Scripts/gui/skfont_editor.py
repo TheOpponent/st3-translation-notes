@@ -162,8 +162,10 @@ class MainFrame(wx.Frame):
         # Add buttons.
         self.open_png_button = wx.Button(self.pg_panel, label="Replace Tiles...")
         self.open_png_button.Bind(wx.EVT_BUTTON, self.on_replace_tiles)
-        self.save_png_button = wx.Button(self.pg_panel, label="Export Tile...")
+        self.save_png_button = wx.Button(self.pg_panel, label="Export Tiles...")
         self.save_png_button.Bind(wx.EVT_BUTTON, self.on_export_tile)
+        self.hex_data_button = wx.Button(self.pg_panel, label="Show Hex Data...")
+        self.hex_data_button.Bind(wx.EVT_BUTTON, self.on_hex_data)
         self.save_button = wx.Button(self.pg_panel, label="Save SKFONT.CG")
         self.save_button.Bind(wx.EVT_BUTTON, self.on_save_skfont)
         self.about_button = wx.Button(self.pg_panel, label="About...")
@@ -173,6 +175,7 @@ class MainFrame(wx.Frame):
         pg_sizer.Add(self.pg, 2, flag=wx.EXPAND)
         pg_sizer.Add(self.open_png_button, flag=wx.EXPAND)
         pg_sizer.Add(self.save_png_button, flag=wx.EXPAND)
+        pg_sizer.Add(self.hex_data_button, flag=wx.EXPAND)
         pg_sizer.Add(self.save_button, flag=wx.EXPAND)
         pg_sizer.Add(wx.StaticLine(self.pg_panel), flag=wx.ALL, border=5)
         pg_sizer.Add(self.about_button, flag=wx.EXPAND)
@@ -293,7 +296,8 @@ class MainFrame(wx.Frame):
         if image_filename != "":
             with Image.open(image_filename) as image:
                 if image.height != self.tile_size:
-                    dlg = wx.MessageDialog(self,
+                    dlg = wx.MessageDialog(
+                        self,
                         f"Image must have a height of {self.tile_size} pixels.",
                         "Invalid Image",
                         wx.OK | wx.ICON_ERROR,
@@ -301,7 +305,8 @@ class MainFrame(wx.Frame):
                     dlg.ShowModal()
                     return
                 if image.width % self.tile_size != 0:
-                    dlg = wx.MessageDialog(self,
+                    dlg = wx.MessageDialog(
+                        self,
                         f"Image must have a width divisible by {self.tile_size} pixels.",
                         "Invalid Image",
                         wx.OK | wx.ICON_ERROR,
@@ -309,7 +314,8 @@ class MainFrame(wx.Frame):
                     dlg.ShowModal()
                     return
                 if image.mode != "RGB":
-                    dlg = wx.MessageDialog(self,
+                    dlg = wx.MessageDialog(
+                        self,
                         "Image must be RGB with 8 bits per channel and no transparency.",
                         "Invalid Image",
                         wx.OK | wx.ICON_ERROR,
@@ -393,6 +399,11 @@ class MainFrame(wx.Frame):
                     except Exception as e:
                         wx.MessageBox(str(e), "Error", wx.OK | wx.ICON_ERROR)
 
+    def on_hex_data(self, event):
+        with HexDataDialog(self, self.selected_tile) as dialog:
+            dialog.ShowModal()
+        event.Skip()
+
     def on_save_skfont(self, event):
         self.save_skfont()
         event.Skip()
@@ -439,6 +450,7 @@ class MainFrame(wx.Frame):
                     )[::-1]
 
             # Update the tile_offset maximum based on the current visible number of tiles.
+            # TODO: If user double clicks on a tile on the last page, an IndexError is thrown.
             self.pg.SetPropertyAttribute(
                 "TileOffset", "Max", self.TILE_MAX - tile_limit
             )
@@ -608,7 +620,8 @@ class MainFrame(wx.Frame):
 
         value = self.scrollbar.GetThumbPosition()
 
-        # Store old tile values based on cursor position, then replace with calculated values from scrollbar position.
+        # Store old tile values based on cursor position,
+        # then replace with calculated values from scrollbar position.
         old_tile_offset = self.tile_offset % self.tile_cols
         old_selected_tile = self.selected_tile - self.tile_offset
         self.tile_offset = value * self.tile_cols + old_tile_offset
@@ -641,6 +654,9 @@ class MainFrame(wx.Frame):
 class ReplaceTilesDialog(wx.Dialog):
     """Dialog that shows the input image with grid lines drawn over it
     before they are committed to the main tile grid."""
+
+    # TODO: Prevent replacing tiles if the number of input tiles would
+    # cause an overflow of tiles.
 
     def __init__(
         self,
@@ -711,7 +727,7 @@ class ExportTilesDialog(wx.Dialog):
             main_panel, label="Select the number of tiles to export:"
         )
         self.spinctrl = wx.SpinCtrl(
-            main_panel, wx.ID_ANY, min=1, max=parent.TILE_MAX, initial=1
+            main_panel, wx.ID_ANY, min=1, max=parent.TILE_MAX - self.selected_tile, initial=1
         )
         self.spinctrl.Bind(wx.EVT_SPINCTRL, self.on_spinctrl)
 
@@ -762,6 +778,98 @@ class ExportTilesDialog(wx.Dialog):
 
     def on_cancel(self, event):
         self.EndModal(wx.ID_CANCEL)
+
+
+class HexDataDialog(wx.Dialog):
+    """Dialog that displays hex data for selected tiles."""
+
+    # TODO: Show a live preview of the tiles to be exported.
+
+    def __init__(self, parent, selected_tile):
+        super().__init__(parent, wx.ID_ANY, title="Hex Data")
+
+        self.selected_tile = selected_tile
+        self.parent = parent
+        self.tile_count = 1
+        self.tiles = parent.tiles
+        dialog_sizer = wx.GridBagSizer()
+
+        main_panel = wx.Panel(self)
+
+        label1 = wx.StaticText(
+            main_panel,
+            label=f"Showing hex data for tiles starting from tile number {selected_tile}.",
+        )
+        label2 = wx.StaticText(
+            main_panel, label="Select the number of tiles to export:"
+        )
+        self.spinctrl = wx.SpinCtrl(
+            main_panel, wx.ID_ANY, min=1, max=parent.TILE_MAX - self.selected_tile, initial=1
+        )
+        self.spinctrl.Bind(wx.EVT_SPINCTRL, self.on_spinctrl)
+
+        self.textarea = wx.TextCtrl(
+            main_panel, wx.ID_ANY, value=self.tilehex(self.selected_tile, self.tile_count), size=wx.Size(640,480),
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 
+        )
+        self.font = self.textarea.GetFont()
+        self.font.SetFamily(wx.FONTFAMILY_TELETYPE)
+        self.font.MakeBold()
+        self.textarea.SetFont(self.font)
+
+        ok_sizer = wx.StdDialogButtonSizer()
+        ok_button = wx.Button(main_panel, wx.ID_OK)
+        ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
+        ok_sizer.AddButton(ok_button)
+        ok_sizer.Realize()
+
+        dialog_sizer.Add(
+            label1,
+            wx.GBPosition(0, 0),
+            wx.GBSpan(1, 2),
+            flag=wx.ALIGN_LEFT | wx.ALL,
+            border=5,
+        )
+        dialog_sizer.Add(
+            label2,
+            wx.GBPosition(1, 0),
+            wx.GBSpan(1, 1),
+            flag=wx.ALIGN_LEFT | wx.ALL,
+            border=5,
+        )
+        dialog_sizer.Add(
+            self.spinctrl, wx.GBPosition(1, 1), wx.GBSpan(1, 1), flag=wx.ALL, border=5
+        )
+        dialog_sizer.Add(
+            self.textarea, wx.GBPosition(2, 0), wx.GBSpan(1, 2), flag=wx.ALL, border=5
+        )
+
+        dialog_sizer.Add(
+            ok_sizer,
+            wx.GBPosition(3, 0),
+            wx.GBSpan(1, 2),
+            flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,
+            border=5,
+        )
+
+        main_panel.SetSizer(dialog_sizer)
+        main_panel.Fit()
+        self.Fit()
+
+    def on_spinctrl(self, event):
+        self.tile_count = self.spinctrl.GetValue()
+        self.textarea.SetValue(self.tilehex(self.selected_tile, self.tile_count))
+        event.Skip()
+
+    def on_ok(self, event):
+        self.EndModal(wx.ID_OK)
+
+    def tilehex(self, selected_tile, tile_count):
+        output = ""
+        for i in range(tile_count):
+            output += str(self.tiles[selected_tile + i].data.hex())
+
+        return output
 
 
 class AboutDialog(wx.Dialog):
