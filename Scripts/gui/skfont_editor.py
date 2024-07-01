@@ -1,4 +1,5 @@
 import os
+import sys
 import struct
 
 import wx
@@ -60,11 +61,14 @@ class MainFrame(wx.Frame):
 
         self.modified = False
 
-        self.filename = wx.FileSelector(
-            "Open SKFONT.CG",
-            default_filename="SKFONT.CG",
-            flags=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-        )
+        if len(sys.argv) == 1:
+            self.filename = wx.FileSelector(
+                "Open SKFONT.CG",
+                default_filename="SKFONT.CG",
+                flags=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+        else:
+            self.filename = sys.argv[1]
         if self.filename != "":
             if os.stat(self.filename).st_size == 1178944:
                 self.tile_size = 26
