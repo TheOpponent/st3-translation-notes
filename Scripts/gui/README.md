@@ -17,4 +17,6 @@ Mr. SKFONT requires Pillow and wxPython as dependencies.
 - Click on the **Save SKFONT.CG** button to save your changes.
 
 ### Notes
+The location of SKFONT.CG can be provided as a command line argument.
+
 The secondary font sheets SKFONT2.CG, SKFONT3.CG, and SKFONT4.CG are also supported, but they currently do not show the correct RAM locations.

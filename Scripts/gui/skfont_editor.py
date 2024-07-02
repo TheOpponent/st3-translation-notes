@@ -206,7 +206,7 @@ class MainFrame(wx.Frame):
             wxpg.StringProperty(
                 "RAM Location",
                 "RAMLocation",
-                value=str(hex(self.selected_tile + 0x8CCD7EC0))[2:],
+                value=str(hex(self.selected_tile * self.tile_data_length + 0x8CCD7EC0))[2:],
             )
         )
 
@@ -382,7 +382,7 @@ class MainFrame(wx.Frame):
     def on_export_tile(self, event):
         """Save the selected tiles as a PNG image."""
 
-        with ExportTilesDialog(self, self.selected_tile) as dialog:
+        with ExportTilesDialog(self, self.selected_tile, str(hex(self.selected_tile * self.tile_data_length + 0x8CCD7EC0))[2:]) as dialog:
             if dialog.ShowModal() == wx.ID_OK:
                 tile_count = dialog.tile_count
                 output_image = Image.new(
@@ -405,7 +405,7 @@ class MainFrame(wx.Frame):
                         wx.MessageBox(str(e), "Error", wx.OK | wx.ICON_ERROR)
 
     def on_hex_data(self, event):
-        with HexDataDialog(self, self.selected_tile) as dialog:
+        with HexDataDialog(self, self.selected_tile, str(hex(self.selected_tile * self.tile_data_length + 0x8CCD7EC0))[2:]) as dialog:
             dialog.ShowModal()
         event.Skip()
 
@@ -465,6 +465,8 @@ class MainFrame(wx.Frame):
                     self.tile_cursor = (self.selected_tile - self.tile_offset, 0)
                 self.pg.SetPropertyValue("TileOffset", self.tile_offset)
 
+            # TODO: Change tile cursor coordinates if the grid bitmap is 
+            # scrolled and would move the cursor out of bounds.
             elif self.selected_tile >= self.tile_offset + tile_limit:
                 if self.pg_source in ["keyboard", "mousewheel"]:
                     self.tile_offset += self.tile_cols
@@ -503,6 +505,7 @@ class MainFrame(wx.Frame):
                 self.tile_cols,
                 self.tile_size,
                 self.tile_scale,
+                invert_image=self.invert_image
             )
             self.tilegrid_panel.bitmap = self.tile_grid
             self.tilegrid_panel.rows = self.tile_rows
@@ -719,7 +722,7 @@ class ReplaceTilesDialog(wx.Dialog):
 class ExportTilesDialog(wx.Dialog):
     """Prompt the user to select a number of tiles to export."""
 
-    def __init__(self, parent, selected_tile: int, title="Export Tiles"):
+    def __init__(self, parent, selected_tile: int, address, title="Export Tiles"):
         super().__init__(parent, wx.ID_ANY, title=title)
 
         self.selected_tile = selected_tile
@@ -732,7 +735,7 @@ class ExportTilesDialog(wx.Dialog):
 
         label1 = wx.StaticText(
             self.main_panel,
-            label=f"Exporting tiles starting from tile number {selected_tile}.",
+            label=f"Exporting tiles starting from tile number {selected_tile} (RAM location {address}).",
             size=(416,-1)
         )
         label2 = wx.StaticText(
@@ -824,8 +827,8 @@ class ExportTilesDialog(wx.Dialog):
 class HexDataDialog(wx.Dialog):
     """Dialog that displays hex data for selected tiles."""
 
-    def __init__(self, parent, selected_tile):
-        super().__init__(parent, wx.ID_ANY, title="Hex Data")
+    def __init__(self, parent, selected_tile, address, title="Hex Data"):
+        super().__init__(parent, wx.ID_ANY, title=title)
 
         self.selected_tile = selected_tile
         self.parent = parent
@@ -837,7 +840,7 @@ class HexDataDialog(wx.Dialog):
 
         label1 = wx.StaticText(
             self.main_panel,
-            label=f"Showing hex data for tiles starting from tile number {selected_tile}.",
+            label=f"Showing hex data for tiles starting from tile number {selected_tile} (RAM location {address}).",
         )
         label2 = wx.StaticText(
             self.main_panel, label="Select the number of tiles to export:"
@@ -858,7 +861,7 @@ class HexDataDialog(wx.Dialog):
             self.main_panel,
             wx.ID_ANY,
             value=self.tilehex(self.selected_tile, self.tile_count),
-            size=wx.Size(624, 480),
+            size=wx.Size(624, 388),
             style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
         )
         self.font = self.textarea.GetFont()
