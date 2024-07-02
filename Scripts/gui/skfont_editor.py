@@ -9,6 +9,59 @@ import wx.propgrid as wxpg
 from PIL import Image, ImageDraw, ImageOps
 
 
+class Utils:
+    @staticmethod
+    def create_tile_bitmap(
+        tile_source: list,
+        tile_range_start: int,
+        tile_range_max: int,
+        rows: int,
+        cols: int,
+        size: int,
+        scale: int,
+        add_gridlines=False,
+        invert_image=False,
+    ):
+        """Regenerate the bitmap for the tile grid from tile_source, a list of FontTile objects,
+        starting from tile_range_start and not exceeding tile_range_max. Returns a wx.Bitmap.
+        Call the Refresh() method on the window containing it afterward."""
+
+        # Rows and columns are transposed for x and y dimensions.
+        tile_grid = Image.new("RGB", (cols * size, rows * size))
+        if add_gridlines:
+            tile_grid_draw = ImageDraw.Draw(tile_grid)
+
+        current_tile = 0
+        for y in range(0, rows):
+            for x in range(0, cols):
+                if tile_range_start + current_tile < tile_range_max:
+                    tile_image = tile_source[tile_range_start + current_tile].image
+                else:
+                    # If the tile range exceeds the file size, fill in with blank.
+                    tile_image = Image.new("RGB", (size, size), color=(128, 128, 128))
+
+                tile_grid.paste(tile_image, (x * size, y * size))
+                if add_gridlines and current_tile > 0:
+                    tile_grid_draw.line(
+                        [(x * size, 0), (x * size, size)], fill=(128, 128, 128)
+                    )
+
+                current_tile += 1
+
+        if scale > 1:
+            tile_grid = tile_grid.resize(
+                (cols * size * scale, rows * size * scale),
+                resample=Image.Resampling.NEAREST,
+            )
+
+        if invert_image:
+            tile_grid = ImageOps.invert(tile_grid)
+
+        tile_grid_output = wx.Image(tile_grid.size, tile_grid.tobytes())
+
+        return wx.Bitmap(tile_grid_output)
+
+
 class MainFrame(wx.Frame):
     TILE_MAX: int
     "Total number of tiles in SKFONT.CG."
@@ -43,7 +96,7 @@ class MainFrame(wx.Frame):
     def __init__(self, parent, title):
         super().__init__(parent=None, title=title, size=(800, 600))
 
-        self.VERSION = "1.1.0"
+        self.VERSION = "1.2.0"
         self.TILE_MAX = 3488
 
         main_sizer = wx.BoxSizer(orient=wx.HORIZONTAL)
@@ -113,9 +166,7 @@ class MainFrame(wx.Frame):
         )
         self.pg.SetPropertyEditor("TileOffset", "SpinCtrl")
         self.pg.SetPropertyAttribute("TileOffset", "Min", 0)
-        self.pg.SetPropertyAttribute(
-            "TileOffset", "Max", self.TILE_MAX - (self.tile_rows * self.tile_cols)
-        )
+        self.pg.SetPropertyAttribute("TileOffset", "Max", self.TILE_MAX)
 
         self.pg.Append(wxpg.IntProperty("Rows", "TileRows", value=self.tile_rows))
         self.pg.SetPropertyEditor("TileRows", "SpinCtrl")
@@ -186,7 +237,7 @@ class MainFrame(wx.Frame):
         self.pg_panel.SetSizer(pg_sizer)
 
         # Create tile editor panel.
-        self.tile_grid = self.create_tile_bitmap(
+        self.tile_grid = Utils.create_tile_bitmap(
             self.tiles,
             self.tile_offset,
             self.TILE_MAX,
@@ -222,56 +273,6 @@ class MainFrame(wx.Frame):
 
         self.SetSizer(main_sizer)
         self.Bind(wx.EVT_CLOSE, self.on_close)
-
-    def create_tile_bitmap(
-        self,
-        tile_source: list,
-        tile_range_start: int,
-        tile_range_max: int,
-        rows: int,
-        cols: int,
-        size: int,
-        scale: int,
-        add_gridlines=False,
-    ):
-        """Regenerate the bitmap for the tile grid from tile_source, a list of FontTile objects,
-        starting from tile_range_start and not exceeding tile_range_max. Returns a wx.Bitmap.
-        Call the Refresh() method on the window containing it afterward."""
-
-        # Rows and columns are transposed for x and y dimensions.
-        tile_grid = Image.new("RGB", (cols * size, rows * size))
-        if add_gridlines:
-            tile_grid_draw = ImageDraw.Draw(tile_grid)
-
-        current_tile = 0
-        for y in range(0, rows):
-            for x in range(0, cols):
-                if tile_range_start + current_tile < tile_range_max:
-                    tile_image = tile_source[tile_range_start + current_tile].image
-                else:
-                    # If the tile range exceeds the file size, fill in with blank images.
-                    tile_image = Image.new("RGB", (size, size))
-
-                tile_grid.paste(tile_image, (x * size, y * size))
-                if add_gridlines and current_tile > 0:
-                    tile_grid_draw.line(
-                        [(x * size, 0), (x * size, size)], fill=(128, 128, 128)
-                    )
-
-                current_tile += 1
-
-        if scale > 1:
-            tile_grid = tile_grid.resize(
-                (cols * size * scale, rows * size * scale),
-                resample=Image.Resampling.NEAREST,
-            )
-
-        if self.invert_image:
-            tile_grid = ImageOps.invert(tile_grid)
-
-        tile_grid_output = wx.Image(tile_grid.size, tile_grid.tobytes())
-
-        return wx.Bitmap(tile_grid_output)
 
     def save_skfont(self):
         output_data = b""
@@ -354,7 +355,7 @@ class MainFrame(wx.Frame):
                             array += struct.pack("=B", lo_pixel | hi_pixel)
                     new_tiles.append(FontTile(array, self.tile_size))
 
-            new_tiles_bitmap = self.create_tile_bitmap(
+            new_tiles_bitmap = Utils.create_tile_bitmap(
                 new_tiles, 0, len(new_tiles), 1, len(new_tiles), self.tile_size, 1, True
             )
             with ReplaceTilesDialog(
@@ -366,7 +367,7 @@ class MainFrame(wx.Frame):
                     self.modified = True
 
             # Update view.
-            self.tile_grid = self.create_tile_bitmap(
+            self.tile_grid = Utils.create_tile_bitmap(
                 self.tiles,
                 self.tile_offset,
                 self.TILE_MAX,
@@ -453,11 +454,7 @@ class MainFrame(wx.Frame):
                         self.selected_tile - self.tile_offset, self.tile_cols
                     )[::-1]
 
-            # Update the tile_offset maximum based on the current visible number of tiles.
-            # TODO: If user double clicks on a tile on the last page, an IndexError is thrown.
-            self.pg.SetPropertyAttribute(
-                "TileOffset", "Max", self.TILE_MAX - tile_limit
-            )
+            self.pg.SetPropertyAttribute("TileOffset", "Max", self.TILE_MAX)
 
             if self.selected_tile < self.tile_offset:
                 if self.pg_source != "keyboard":
@@ -498,7 +495,7 @@ class MainFrame(wx.Frame):
             )
 
             # Update view.
-            self.tile_grid = self.create_tile_bitmap(
+            self.tile_grid = Utils.create_tile_bitmap(
                 self.tiles,
                 self.tile_offset,
                 self.TILE_MAX,
@@ -518,6 +515,7 @@ class MainFrame(wx.Frame):
 
         x = event.GetX()
         y = event.GetY()
+        clicked_tile = 0
         width, height = self.tile_grid.GetSize()
         self.tilegrid_panel.SetFocus()
         if x < width and y < height:
@@ -525,13 +523,15 @@ class MainFrame(wx.Frame):
                 x // self.tilegrid_panel.cell_height,
                 y // self.tilegrid_panel.cell_width,
             )
-            self.selected_tile = (
+            clicked_tile = (
                 self.tile_offset
                 + self.tile_cursor[0]
                 + self.tile_cursor[1] * self.tile_cols
             )
-            self.tilegrid_panel.select_tile(self.tile_cursor)
-            self.pg.ChangePropertyValue("SelectedTile", self.selected_tile)
+            if clicked_tile < self.TILE_MAX:
+                self.selected_tile = clicked_tile
+                self.tilegrid_panel.select_tile(self.tile_cursor)
+                self.pg.ChangePropertyValue("SelectedTile", self.selected_tile)
 
     def on_tile_doubleclick(self, event):
         """Change tile offset to tile that was double clicked."""
@@ -598,12 +598,20 @@ class MainFrame(wx.Frame):
                 self.selected_tile -= self.tile_cols
             self.tile_offset -= self.tile_cols
         else:
-            if self.tile_offset + tile_limit + self.tile_cols < self.TILE_MAX:
+            if (
+                self.tile_offset + tile_limit + self.tile_cols
+                < self.TILE_MAX + tile_limit
+            ):
                 self.tile_offset += self.tile_cols
-                self.selected_tile += self.tile_cols
+                if self.selected_tile + self.tile_cols < self.TILE_MAX:
+                    self.selected_tile += self.tile_cols
 
-        self.tile_offset = max(0, min(self.tile_offset, self.TILE_MAX - tile_limit))
-        self.selected_tile = max(0, min(self.selected_tile, self.TILE_MAX - tile_limit))
+        self.tile_offset = max(0, min(self.tile_offset, self.TILE_MAX + tile_limit))
+        if self.selected_tile + self.tile_cols < self.TILE_MAX:
+            self.selected_tile = max(
+                0, min(self.selected_tile, self.TILE_MAX + tile_limit)
+            )
+
         self.pg.SetPropertyValue("TileOffset", self.tile_offset)
         self.pg.ChangePropertyValue("SelectedTile", self.selected_tile)
         event.Skip()
@@ -711,35 +719,43 @@ class ReplaceTilesDialog(wx.Dialog):
 class ExportTilesDialog(wx.Dialog):
     """Prompt the user to select a number of tiles to export."""
 
-    # TODO: Show a live preview of the tiles to be exported.
-
     def __init__(self, parent, selected_tile: int, title="Export Tiles"):
         super().__init__(parent, wx.ID_ANY, title=title)
 
         self.selected_tile = selected_tile
         self.parent = parent
         self.tile_count = 1
+        self.tile_bitmap = wx.Bitmap()
         dialog_sizer = wx.GridBagSizer()
 
-        main_panel = wx.Panel(self)
+        self.main_panel = wx.Panel(self)
 
         label1 = wx.StaticText(
-            main_panel,
+            self.main_panel,
             label=f"Exporting tiles starting from tile number {selected_tile}.",
+            size=(416,-1)
         )
         label2 = wx.StaticText(
-            main_panel, label="Select the number of tiles to export:"
+            self.main_panel, label="Select the number of tiles to export:"
         )
         self.spinctrl = wx.SpinCtrl(
-            main_panel, wx.ID_ANY, min=1, max=parent.TILE_MAX - self.selected_tile, initial=1
+            self.main_panel,
+            wx.ID_ANY,
+            min=1,
+            max=parent.TILE_MAX - self.selected_tile,
+            initial=1,
         )
+
         self.spinctrl.Bind(wx.EVT_SPINCTRL, self.on_spinctrl)
+        
+        self.update_tile_bitmap()
+        self.tile_preview = wx.StaticBitmap(self.main_panel, bitmap=self.tile_bitmap)   
 
         ok_sizer = wx.StdDialogButtonSizer()
-        ok_button = wx.Button(main_panel, wx.ID_OK)
+        ok_button = wx.Button(self.main_panel, wx.ID_OK)
         ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
         ok_sizer.AddButton(ok_button)
-        cancel_button = wx.Button(main_panel, wx.ID_CANCEL)
+        cancel_button = wx.Button(self.main_panel, wx.ID_CANCEL)
         cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel)
         ok_sizer.AddButton(cancel_button)
         ok_sizer.Realize()
@@ -762,20 +778,41 @@ class ExportTilesDialog(wx.Dialog):
             self.spinctrl, wx.GBPosition(1, 1), wx.GBSpan(1, 1), flag=wx.ALL, border=5
         )
         dialog_sizer.Add(
-            ok_sizer,
+            self.tile_preview,
             wx.GBPosition(2, 0),
+            wx.GBSpan(1, 2),
+            flag=wx.ALL,
+            border=5,
+        )
+        dialog_sizer.Add(
+            ok_sizer,
+            wx.GBPosition(3, 0),
             wx.GBSpan(1, 2),
             flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,
             border=5,
         )
 
-        main_panel.SetSizer(dialog_sizer)
-        main_panel.Fit()
+
+        self.main_panel.SetSizer(dialog_sizer)
+        self.main_panel.Fit()
         self.Fit()
 
     def on_spinctrl(self, event):
         self.tile_count = self.spinctrl.GetValue()
+        self.update_tile_bitmap()
+        self.tile_preview.SetBitmap(self.tile_bitmap)
         event.Skip()
+
+    def update_tile_bitmap(self):
+        self.tile_bitmap = Utils.create_tile_bitmap(
+            self.parent.tiles,
+            self.selected_tile,
+            self.parent.TILE_MAX,
+            1,
+            self.tile_count,
+            self.parent.tile_size,
+            1
+        )
 
     def on_ok(self, event):
         self.EndModal(wx.ID_OK)
@@ -787,34 +824,42 @@ class ExportTilesDialog(wx.Dialog):
 class HexDataDialog(wx.Dialog):
     """Dialog that displays hex data for selected tiles."""
 
-    # TODO: Show a live preview of the tiles to be exported.
-
     def __init__(self, parent, selected_tile):
         super().__init__(parent, wx.ID_ANY, title="Hex Data")
 
         self.selected_tile = selected_tile
         self.parent = parent
         self.tile_count = 1
-        self.tiles = parent.tiles
+        self.tile_bitmap = wx.Bitmap()
         dialog_sizer = wx.GridBagSizer()
 
-        main_panel = wx.Panel(self)
+        self.main_panel = wx.Panel(self)
 
         label1 = wx.StaticText(
-            main_panel,
+            self.main_panel,
             label=f"Showing hex data for tiles starting from tile number {selected_tile}.",
         )
         label2 = wx.StaticText(
-            main_panel, label="Select the number of tiles to export:"
+            self.main_panel, label="Select the number of tiles to export:"
         )
         self.spinctrl = wx.SpinCtrl(
-            main_panel, wx.ID_ANY, min=1, max=parent.TILE_MAX - self.selected_tile, initial=1
+            self.main_panel,
+            wx.ID_ANY,
+            min=1,
+            max=self.parent.TILE_MAX - self.selected_tile,
+            initial=1,
         )
         self.spinctrl.Bind(wx.EVT_SPINCTRL, self.on_spinctrl)
 
+        self.update_tile_bitmap()
+        self.tile_preview = wx.StaticBitmap(self.main_panel, bitmap=self.tile_bitmap)   
+
         self.textarea = wx.TextCtrl(
-            main_panel, wx.ID_ANY, value=self.tilehex(self.selected_tile, self.tile_count), size=wx.Size(640,480),
-            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 
+            self.main_panel,
+            wx.ID_ANY,
+            value=self.tilehex(self.selected_tile, self.tile_count),
+            size=wx.Size(624, 480),
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
         )
         self.font = self.textarea.GetFont()
         self.font.SetFamily(wx.FONTFAMILY_TELETYPE)
@@ -822,7 +867,7 @@ class HexDataDialog(wx.Dialog):
         self.textarea.SetFont(self.font)
 
         ok_sizer = wx.StdDialogButtonSizer()
-        ok_button = wx.Button(main_panel, wx.ID_OK)
+        ok_button = wx.Button(self.main_panel, wx.ID_OK)
         ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
         ok_sizer.AddButton(ok_button)
         ok_sizer.Realize()
@@ -845,33 +890,53 @@ class HexDataDialog(wx.Dialog):
             self.spinctrl, wx.GBPosition(1, 1), wx.GBSpan(1, 1), flag=wx.ALL, border=5
         )
         dialog_sizer.Add(
-            self.textarea, wx.GBPosition(2, 0), wx.GBSpan(1, 2), flag=wx.ALL, border=5
+            self.tile_preview,
+            wx.GBPosition(2, 0),
+            wx.GBSpan(1, 2),
+            flag=wx.ALL,
+            border=5,
+        )
+        dialog_sizer.Add(
+            self.textarea, wx.GBPosition(3, 0), wx.GBSpan(1, 2), flag=wx.ALL, border=5
         )
 
         dialog_sizer.Add(
             ok_sizer,
-            wx.GBPosition(3, 0),
+            wx.GBPosition(4, 0),
             wx.GBSpan(1, 2),
             flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL,
             border=5,
         )
 
-        main_panel.SetSizer(dialog_sizer)
-        main_panel.Fit()
+        self.main_panel.SetSizer(dialog_sizer)
+        self.main_panel.Fit()
         self.Fit()
 
     def on_spinctrl(self, event):
         self.tile_count = self.spinctrl.GetValue()
         self.textarea.SetValue(self.tilehex(self.selected_tile, self.tile_count))
+        self.update_tile_bitmap()
+        self.tile_preview.SetBitmap(self.tile_bitmap)
         event.Skip()
 
     def on_ok(self, event):
         self.EndModal(wx.ID_OK)
 
+    def update_tile_bitmap(self):
+        self.tile_bitmap = Utils.create_tile_bitmap(
+            self.parent.tiles,
+            self.selected_tile,
+            self.parent.TILE_MAX,
+            1,
+            self.tile_count,
+            self.parent.tile_size,
+            1
+        )
+
     def tilehex(self, selected_tile, tile_count):
         output = ""
         for i in range(tile_count):
-            output += str(self.tiles[selected_tile + i].data.hex())
+            output += str(self.parent.tiles[selected_tile + i].data.hex())
 
         return output
 
