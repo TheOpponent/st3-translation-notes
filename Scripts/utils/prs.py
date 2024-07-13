@@ -1,168 +1,135 @@
-# ruff: noqa: F403, F405
+# Temporary workaround using calls to subprocesses instead of the library
 
-# PRS functions, with wrapping needed by Sakura Taisen 3 added.
-
-import platform
+import os
+import random
+import string
 import struct
+import subprocess
 import sys
-import time
-from ctypes import *
 
-start_time = time.time()
-
-PLATFORM = platform.system()
-IS_64BITS = sys.maxsize > 2**32
-
-if PLATFORM == "Windows":
-    lib = cdll.LoadLibrary("./lib/prs.dll")
-elif PLATFORM == "Linux":
-    lib = cdll.LoadLibrary("./lib/prs.so")
-else:
-    print("Cannot determine platform.")
-    exit(1)
-
-class Mode(c_int):
-    """ enum mode { m_none, m_direct, m_long, m_short0, m_short1, m_short2, m_short3, m_done };"""
-
-    m_none = 0
-    m_direct = 1
-    m_long = 2
-    m_short0 = 3
-    m_short1 = 4
-    m_short2 = 5
-    m_short3 = 6
-    m_done = 7
-
-
-class Nodes(Structure):
-    """ struct compnode {
-            enum mode type;
-            uint16_t offset;
-            uint16_t size;
-            uint8_t data;
-        };
-    """
-    _fields_ = [
-                    ("type",Mode),
-                    ("offset",c_uint16),
-                    ("size",c_uint16),
-                    ("data",c_uint8),
-                ]
-    
-    
-lib.prs_compress.argtypes = [
-    POINTER(c_uint8),
-    c_int,
-    POINTER(POINTER(c_uint8)),
-]
-lib.prs_compress.restype = c_int
-lib.prs_decompress.argtypes = [
-    POINTER(c_uint8),
-    c_int,
-    POINTER(Nodes),
-    POINTER(c_uint8),
-    c_int,
-]
-lib.prs_decompress.restype = c_int
+COMPRESS_PROGRAM = ".\\lib\\compress.exe"
+DECOMPRESS_PROGRAM = ".\\lib\\decompress.exe"
 
 
 class PRSError(Exception):
     pass
 
 
-def compress(input_data: bytes):
-    """Apply PRS compression to a data chunk starting with a four-byte
-    signature and size information."""
-
-    input_signature = input_data[0:4]
-    uncompressed_length = len(input_data) - 8
-    uncompressed_data_array = (c_uint8 * uncompressed_length)(*input_data[8:])
-    compressed_data_ptr = POINTER(c_uint8)()
-
-    compressed_length = lib.prs_compress(
-        uncompressed_data_array,
-        uncompressed_length,
-        byref(compressed_data_ptr),
-    )
-
-    if compressed_length > 0:
-        compressed_data = bytearray(string_at(compressed_data_ptr, compressed_length))
-
-        # Pad compressed data.
-        compressed_data.extend(b"\x00\x00")
-        if (padding := len(compressed_data) % 4) != 0:
-            compressed_data.extend(b"\x00" * (4 - padding))
-
-        padded_length = compressed_length + padding + 10
-
-        # The header of the output includes the padded length, input length, and unpadded length.
-        output_data = bytearray(input_signature)
-        output_data.extend(struct.pack("<I", padded_length))
-        output_data.extend(struct.pack("<I", uncompressed_length))
-        output_data.extend(struct.pack("<I", compressed_length))
-        output_data.extend(compressed_data)
-        output_data.extend(b"CPRS\x00\x00\x00\x00EOFC\x00\x00\x00\x00")
-        return output_data
-    else:
-        raise PRSError("PRS compression failed.")
+def random_filename(length) -> str:
+    characters = string.ascii_letters + string.digits
+    return "~" + "".join(random.choice(characters) for _ in range(length)) + ".bin"
 
 
-def decompress(input_data: bytes):
-    """Decompress a PRS-compressed data chunk."""
+def compress(data: bytearray) -> bytes:
+    """Pass a bytearray containing the relevant header to a program
+    that compresses data using PRS, and adds wrapping for Sakura
+    Taisen 3 to the output. Currently requires writing and reading
+    temporary files.
 
-    input_signature = input_data[0:4]
-    compressed_length = struct.unpack("<I", input_data[12:16])[0]
-    compressed_data_array = (c_uint8 * compressed_length)(*input_data[16:16 + compressed_length])
-    nodes = (Nodes * compressed_length)()
-    nodes_array = cast(nodes, POINTER(Nodes))
-    decompressed_length = struct.unpack("<I", input_data[8:12])[0]
-    decompressed_data_array = (c_uint8 * decompressed_length)()
+    Returns a bytes object containing wrapped PRS-compressed data."""
 
-    result = lib.prs_decompress(
-        compressed_data_array,
-        compressed_length,
-        nodes_array,
-        decompressed_data_array,
-        decompressed_length,
-    )
+    input_signature = data[0:4]
+    input_length = struct.unpack("<I", data[4:8])[0]
+    input_data = data[8:]
+    output_data = bytearray(input_signature)
 
-    if result == 0:
-        decompressed_data = bytearray(decompressed_data_array)
+    tempin_filename = random_filename(7)
+    tempout_filename = random_filename(7)
 
-        # The header of the output includes the padded length, input length, and unpadded length.
-        output_data = bytearray(input_signature)
-        output_data.extend(struct.pack("<I", decompressed_length))
-        output_data.extend(decompressed_data)
-        del compressed_data_array
-        del decompressed_data_array
-        del nodes_array
-        return output_data
-    else:
-        raise PRSError("PRS decompression failed.")
+    with open(tempin_filename, "wb") as file:
+        file.write(input_data)
+
+    try:
+        compressor = subprocess.Popen(
+            [COMPRESS_PROGRAM, tempin_filename, tempout_filename],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        out, err = compressor.communicate()
+        if compressor.returncode != 0:
+            raise PRSError(err.decode())
+    except subprocess.SubprocessError as e:
+        raise PRSError(e)
+
+    with open(tempout_filename, "rb") as file:
+        output_temp_data = bytearray(file.read())
+
+    output_length = len(output_temp_data)
+    if (padding := output_length % 4) != 0:
+        output_temp_data.extend(b"\x00" * (4 - padding))
+
+    # Padded length includes CPRS\x00\x00\x00\x00 footer.
+    padded_length = output_length + padding + 8
+
+    output_data.extend(struct.pack("<I", padded_length))
+    output_data.extend(struct.pack("<I", input_length))
+    output_data.extend(struct.pack("<I", output_length))
+    output_data.extend(output_temp_data)
+    output_data.extend(b"CPRS\x00\x00\x00\x00EOFC\x00\x00\x00\x00")
+
+    os.unlink(tempin_filename)
+    os.unlink(tempout_filename)
+
+    return output_data
 
 
-def main():
-    if len(sys.argv) >= 4 and sys.argv[1] in ["-c","-d"]:
-        with open(sys.argv[2], "rb") as f:
-            input_data = f.read()
+def decompress(data: bytearray) -> bytes:
+    """Pass a bytearray of PRS-compressed data with wrapping for Sakura
+    Taisen 3 to a program that decompresses PRS data. The wrapping is
+    stripped before passed to the program.
 
-        try:
-            if sys.argv[1] == "-c":
-                output = compress(input_data)
-            elif sys.argv[1] == "-d":
-                output = decompress(input_data)
-        except PRSError as e:
-            print(e)
-            exit(1)
+    Returns a bytes object with decompressed data."""
 
-        with open(sys.argv[3], "wb") as f:
-            f.write(output)
-            print(f"Wrote {len(output)} bytes.")
-            print("Finished in", time.time() - start_time, "seconds.")
+    input_signature = data[0:4]
+    input_padded_length = struct.unpack("<I", data[4:8])[0]
+    input_uncompressed_length = struct.unpack("<I", data[8:12])[0]
+    input_compressed_length = struct.unpack("<I", data[12:16])[0]
+    input_data = data[16:]
+    input_data_length = len(input_data) - 8
 
-    else:
-        print("Usage: [-c] [-d] INPUT_FILE OUTPUT_FILE")
+    if input_data_length != input_padded_length:
+        raise PRSError(
+            f"Padded data length in header is incorrect (Expected {input_padded_length}, got {input_data_length})"
+        )
+
+    output_data = bytearray(input_signature)
+
+    tempin_filename = random_filename(7)
+    tempout_filename = random_filename(7)
+
+    with open(tempin_filename, "wb") as file:
+        file.write(input_data)
+
+    try:
+        decompressor = subprocess.Popen(
+            [DECOMPRESS_PROGRAM, tempin_filename, tempout_filename],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        out, err = decompressor.communicate()
+        if decompressor.returncode != 0:
+            raise PRSError(err.decode())
+    except subprocess.SubprocessError as e:
+        raise PRSError(e)
+
+    with open(tempout_filename, "rb") as file:
+        output_temp_data = bytearray(file.read())
+
+    output_data.extend(struct.pack("<I", input_uncompressed_length))
+    output_data.extend(output_temp_data)
+
+    os.unlink(tempin_filename)
+    os.unlink(tempout_filename)
+
+    return output_data
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        with open(sys.argv[1], "rb") as file:
+            input_data = file.read()
+
+        output_data = decompress(input_data)
+
+        with open(sys.argv[1] + ".out", "wb") as file:
+            file.write(output_data)
