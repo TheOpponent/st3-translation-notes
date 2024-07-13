@@ -498,7 +498,10 @@ def write_ascr(
             )
             warnings += warning
         elif entry_type in ["code", "lcd", "dialogue"]:
-            line_encoded = new_text.encode(encoding="shift_jis") + b"\x00"
+            try:
+                line_encoded = new_text.encode(encoding="shift_jis") + b"\x00"
+            except UnicodeError as e:
+                raise ASCRError(f"Unable to read text in line {i[0]}. Lines of type 'dialogue' must contain either Latin or Shift-JIS text.")
         else:
             raise ASCRError(f"Unknown entry type in line {i[0]}: {entry_type}")
 
