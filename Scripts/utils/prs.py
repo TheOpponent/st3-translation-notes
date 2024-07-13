@@ -6,6 +6,7 @@ import string
 import struct
 import subprocess
 import sys
+import time
 
 COMPRESS_PROGRAM = ".\\lib\\compress.exe"
 DECOMPRESS_PROGRAM = ".\\lib\\decompress.exe"
@@ -124,12 +125,32 @@ def decompress(data: bytearray) -> bytes:
     return output_data
 
 
+def main():
+    start_time = time.time()
+
+    if len(sys.argv) >= 4:
+        with open(sys.argv[2], "rb") as input_file:
+            input_data = input_file.read()
+            if len(input_data) == 0:
+                print(f"{input_file}: Unable to read all bytes.")
+
+        if sys.argv[1] == "-c":
+            output_data = compress(input_data)
+
+        elif sys.argv[1] == "-d":
+            output_data = decompress(input_data)
+
+        if output_data:
+            with open(sys.argv[3], "wb") as output_file:
+                output_file.write(output_data)
+                print(f"Wrote {len(output_data)} bytes.")
+                return
+
+        print("Finished in ", time.time() - start_time, "seconds.")
+
+    else:
+        print("Usage: [-c] [-d] INPUT_FILE OUTPUT_FILE")
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1], "rb") as file:
-            input_data = file.read()
-
-        output_data = decompress(input_data)
-
-        with open(sys.argv[1] + ".out", "wb") as file:
-            file.write(output_data)
+    main()
