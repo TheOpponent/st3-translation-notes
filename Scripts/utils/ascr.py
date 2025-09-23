@@ -8,6 +8,7 @@
 import re
 import struct
 from io import BytesIO
+from typing import Union, Optional
 
 KNOWN_SIGNATURES = [b"\xba\xaf\x55\xcc", b"\x24\xf7\x01\x65"]
 SJIS_DICT = {
@@ -96,6 +97,16 @@ SJIS_DICT = {
         "û": 0x82BD,
         "ü": 0x82BE,
         "ß": 0x82BF,  # Reni Milchstraße
+        "Á": 0x82C0,  # Portuguese accented letters
+        "Ã": 0x82C1,
+        "Í": 0x82C2,
+        "Ó": 0x82C3,
+        "Õ": 0x82C4,
+        "á": 0x82C5,
+        "ã": 0x82C6,
+        "í": 0x82C7,
+        "ó": 0x82C8,
+        "õ": 0x82C9,
         " ": 0x8140,
         ".": 0x8144,
         ",": 0x8143,
@@ -155,7 +166,7 @@ class ASCRError(Exception):
 
 
 def ascii_to_sjis(
-    input_str, break_lines=True, offset=0, *args, **kwargs
+    input_str, *, break_lines=True, offset=0, **kwargs
 ) -> tuple[bytearray, int]:
     """Converts a string of ASCII characters to byte-swapped Shift-JIS
     and null-terminate it.
@@ -199,7 +210,7 @@ def ascii_to_sjis(
                 if kwargs.get("filename") is not None:
                     raise ASCRError(
                         f"At line ID {kwargs['line_id']}: Invalid character {e}."
-                    )
+                    ) from e
                     
                 else:
                     print(f"[Error] Invalid character {e}.")
@@ -220,7 +231,7 @@ def ascii_to_sjis(
 
 
 def _linebreak(
-    input_str,
+    input_str: str,
     filename=None,
     line_id=None,
     length_limit=37,
@@ -247,9 +258,9 @@ def _linebreak(
     warnings = 0
 
     # Split input string into an enumerated list of each word. Forced line breaks are split into their own word.
-    input_str = [i for i in input_str.replace(r"\n", " \\ ").replace("//", " \\ ").split(" ") if i != ""]
+    input_str_list = [i for i in input_str.replace(r"\n", " \\ ").replace("//", " \\ ").split(" ") if i != ""]
 
-    for i in enumerate(input_str):
+    for i in enumerate(input_str_list):
         word = i[1]
         # Do not count control code sequences in word length.
         word_length = len(i[1]) - sum(
@@ -307,7 +318,7 @@ def _linebreak(
     return (output, rows, warnings)
 
 
-def read_string(file, encoding="shift_jis") -> bytearray:
+def read_string(file: BytesIO, encoding="shift_jis") -> Union[bytearray,str]:
     """Read a null-terminated string from a file object opened in
     binary mode, using the codec given by the encoding argument.
 
@@ -375,7 +386,7 @@ def read_ascr(data: BytesIO, filename="") -> tuple[list,list]:
         if text.isascii():
             entry_type = "code"
         else:
-            if "　　▼" in text:
+            if "　　▼" in text: # type: ignore
                 entry_type = "lcd"
             else:
                 entry_type = "dialogue"
@@ -435,7 +446,7 @@ def read_ascr(data: BytesIO, filename="") -> tuple[list,list]:
 
 
 def write_ascr(
-    ascr_data: BytesIO, strings: list, add_header=True, filename: str = None
+    ascr_data: BytesIO, strings: list, add_header=True, filename: Optional[str] = None
 ) -> tuple[bytearray, int]:
     """Given a source ASCR data chunk, create a new chunk from a list
     of strings injected after the subroutine data. Offsets are
@@ -481,10 +492,10 @@ def write_ascr(
     # Parse strings.
     for i in enumerate(strings, start=1):
         try:
-            offset, entry_type, new_text = i[1]
+            _offset, entry_type, new_text = i[1]
         except ValueError as e:
             ascr_data.close()
-            raise ASCRError(f"Error parsing line {i[0]}: {e}")
+            raise ASCRError(f"Error parsing line {i[0]}: {e}") from e
 
         if entry_type != "code" and re.fullmatch(
             r'[A-zÀ-ÿ0-9œ`~!@#$%^&*(){}_|+\-×÷=?;:<>°\'",.\[\]/—–‘’“”☆★ ]+',
@@ -501,7 +512,7 @@ def write_ascr(
             try:
                 line_encoded = new_text.encode(encoding="shift_jis") + b"\x00"
             except UnicodeError as e:
-                raise ASCRError(f"Unable to read text in line {i[0]}. Lines of type 'dialogue' must contain either Latin or Shift-JIS text.")
+                raise ASCRError(f"Unable to read text in line {i[0]}. Lines of type 'dialogue' must contain either Latin or Shift-JIS text.") from e
         else:
             raise ASCRError(f"Unknown entry type in line {i[0]}: {entry_type}")
 
@@ -511,17 +522,15 @@ def write_ascr(
         # Increase next offset by the length of the string in bytes.
         current_offset += len(line_encoded)
 
-    new_data = bytearray()
-
     # Copy data preceding text offset table location.
     ascr_data.seek(8)
-    new_data = ascr_data.read(offset_table_address - 8) + new_offsets + new_strings
+    new_data = bytearray(ascr_data.read(offset_table_address - 8) + new_offsets + new_strings)
 
     if (padding := len(new_data) % 4) != 0:
         new_data += b"\x40" * padding
 
     if add_header:
-        output_binary = (
+        output_binary = bytearray(
             b"ASCR"
             + struct.pack("<I", len(new_data))
             + new_data
